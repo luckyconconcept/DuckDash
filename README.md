@@ -9,6 +9,15 @@ Willkommen zur Building Challenge. Hier startest du deinen Build. Eine Aufgabe, 
 - **Solo:** Du baust allein.
 - **Preisgeld:** 🥇 250 € · 🥈 150 € · 🥉 100 €
 
+## Bevor du loslegst: GitHub verbinden
+
+Damit Claude Code deinen Fortschritt hochladen kann, muss dein Rechner einmal mit GitHub verbunden sein. Das machst du nur ein einziges Mal:
+
+1. **GitHub-Account anlegen** (falls noch nicht vorhanden), kostenlos auf [github.com](https://github.com).
+2. **Auf deinem Rechner anmelden.** Am einfachsten über die GitHub CLI: installier sie von [cli.github.com](https://cli.github.com) und führ dann im Terminal `gh auth login` aus. Folg einfach den Schritten, der Login läuft über deinen Browser.
+
+Danach dürfen git und Claude Code für dich pushen und du kannst loslegen.
+
 ## So machst du mit (Schritt für Schritt)
 
 1. **Warte auf das Thema.** Erst wenn ich Samstag um 12:00 das Thema gepostet habe, geht es los. Vorher anfangen ist nicht erlaubt.
