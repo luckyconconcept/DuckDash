@@ -51,6 +51,32 @@ Ich nehme an einer Coding-Challenge teil und baue hier ein Minigame. Bevor du lo
 Ziel: mein kompletter Fortschritt landet fortlaufend und nachvollziehbar in meinem eigenen Repo.
 ```
 
+## Am Ende: Dein Game auf Vercel deployen (Prompt)
+
+Wenn dein Minigame fertig ist, gib deiner Claude Code Session diesen Prompt, um es sauber auf Vercel zu deployen. Er stellt sicher, dass wirklich alles committet und vollständig ist und dass die Live-Version genauso läuft wie bei dir lokal:
+
+```text
+Mein Minigame ist fertig und ich will es jetzt sauber auf Vercel deployen. Geh gründlich und Schritt für Schritt vor und melde erst "fertig", wenn die Live-Version nachweislich genauso läuft wie lokal. Halte dich genau an diese Reihenfolge:
+
+1. Alles sichern. Führ `git status` aus, committe und pushe alle offenen Änderungen zu origin. Prüf danach, dass `git status` sauber ist (nichts uncommitted) und dass nichts mehr ungepusht ist (`git log origin/main..HEAD` muss leer sein). Das Repo muss exakt meinem lokalen Stand entsprechen.
+
+2. Vollständigkeit prüfen. Geh das Projekt durch und stell sicher, dass wirklich ALLE Dateien, die das Spiel braucht, im Repo liegen: index.html, alle Skripte, Styles, Bilder, Sounds und sonstige Assets. Achte besonders darauf, dass nichts nur lokal existiert oder aus Versehen in .gitignore steht, und dass keine Datei auf etwas verweist, das nicht eingecheckt ist.
+
+3. Lokal als Referenz testen. Starte das Spiel lokal über einen lokalen Server und bestätige, dass es fehlerfrei läuft. Das ist deine Vergleichsbasis.
+
+4. Stolperfallen checken, die lokal gehen aber live brechen:
+   - Groß- und Kleinschreibung in Dateipfaden. Lokal ist das egal, auf Vercel (Linux) nicht. Ein Verweis auf "Game.js" bei einer Datei "game.js" bricht live. Gleich alle Pfade ab.
+   - Relative Pfade für Assets verwenden (z.B. ./bild.png), keine hartkodierten lokalen Pfade.
+
+5. Auf Vercel deployen. Deploy das aktuelle Projekt auf Vercel, am einfachsten über den Vercel-MCP. Falls der nicht eingerichtet ist, nutz die Vercel CLI (`npx vercel`) und führ mich durch den Login. Deploy als statische Seite.
+
+6. Live verifizieren. Öffne die Live-URL und prüf wirklich, ob das Spiel dort genauso lädt und funktioniert wie lokal. Schau in die Browser-Konsole auf Fehler (z.B. 404 auf Assets). Wenn etwas nicht stimmt: Ursache finden, beheben, committen, pushen, neu deployen und erneut prüfen. Wiederhol das, bis die Live-Version einwandfrei und identisch zu lokal läuft.
+
+7. Bericht. Gib mir am Ende die Live-URL und bestätige ausdrücklich: alles ist committet und gepusht, alle Dateien vollständig, und das Spiel läuft live genauso wie lokal.
+
+Melde nichts als fertig, solange die Live-URL nicht nachweislich einwandfrei läuft.
+```
+
 ## Fairness und Regeln
 
 Damit alle die gleiche Chance haben:
