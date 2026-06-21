@@ -654,7 +654,6 @@ class GameScene extends Phaser.Scene {
 
     const deltaSeconds = delta / 1000;
     this.runTime += deltaSeconds;
-    this.score += deltaSeconds * 12;
     this.speed = 300 + Math.min(280, this.runTime * 6) + (this.isTurboActive() ? 65 : 0);
     const isGrounded = this.duck.body.blocked.down;
     if (!isGrounded) {
