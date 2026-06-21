@@ -2,7 +2,7 @@ const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
 const WATERLINE = 500;
-const DUCK_WATERLINE = 486;
+const DUCK_WATERLINE = 476;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -2237,24 +2237,26 @@ function addWaterOverlay(scene) {
 
   addCurrentSprites(scene, baseDepth + 0.08);
 
-  const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.055, 5, 168, 4);
+  const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.1, 7, 168, 5);
   deepCurrent.setDepth(baseDepth + 0.1);
   scene.tweens.add({
     targets: deepCurrent,
-    x: -220,
-    duration: 7600,
+    x: -520,
+    duration: 6200,
+    yoyo: true,
     repeat: -1,
-    ease: "Linear",
+    ease: "Sine.inOut",
   });
 
-  const nearCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 172, 0xd8ffff, 0.045, 6, 220, 3);
+  const nearCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 172, 0xd8ffff, 0.085, 8, 220, 4);
   nearCurrent.setDepth(baseDepth + 0.15);
   scene.tweens.add({
     targets: nearCurrent,
-    x: -280,
-    duration: 9800,
+    x: -620,
+    duration: 8600,
+    yoyo: true,
     repeat: -1,
-    ease: "Linear",
+    ease: "Sine.inOut",
   });
 
   addBathtubRunoff(scene, baseDepth + 0.35);
@@ -2263,9 +2265,9 @@ function addWaterOverlay(scene) {
 
 function addCurrentSprites(scene, depth) {
   const currents = [
-    { x: 180, y: WATER_SURFACE_Y + 154, scale: 0.27, alpha: 0.13, duration: 10800 },
-    { x: 760, y: WATER_SURFACE_Y + 210, scale: 0.21, alpha: 0.1, duration: 12800 },
-    { x: 1180, y: WATER_SURFACE_Y + 114, scale: 0.18, alpha: 0.08, duration: 9200 },
+    { x: 180, y: WATER_SURFACE_Y + 154, scale: 0.3, alpha: 0.18, duration: 10800 },
+    { x: 760, y: WATER_SURFACE_Y + 210, scale: 0.24, alpha: 0.14, duration: 12800 },
+    { x: 1180, y: WATER_SURFACE_Y + 114, scale: 0.21, alpha: 0.12, duration: 9200 },
   ];
 
   currents.forEach((config) => {
@@ -2352,23 +2354,23 @@ function addBathtubRunoff(scene, depth) {
 }
 
 function addWaterGlints(scene, depth) {
-  for (let index = 0; index < 10; index += 1) {
+  for (let index = 0; index < 16; index += 1) {
     const glint = scene.add.ellipse(
       Phaser.Math.Between(20, GAME_WIDTH - 20),
       Phaser.Math.Between(WATER_SURFACE_Y + 34, GAME_HEIGHT - 26),
       Phaser.Math.Between(42, 98),
       Phaser.Math.Between(4, 9),
       0xeaffff,
-      Phaser.Math.FloatBetween(0.05, 0.12),
+      Phaser.Math.FloatBetween(0.07, 0.16),
     );
     glint.setDepth(depth);
     glint.setAngle(Phaser.Math.Between(-8, 8));
 
     scene.tweens.add({
       targets: glint,
-      x: glint.x - Phaser.Math.Between(120, 260),
-      alpha: Phaser.Math.FloatBetween(0.02, 0.08),
-      duration: Phaser.Math.Between(3600, 6400),
+      x: glint.x - Phaser.Math.Between(180, 360),
+      alpha: Phaser.Math.FloatBetween(0.03, 0.1),
+      duration: Phaser.Math.Between(2800, 5200),
       delay: Phaser.Math.Between(0, 2200),
       yoyo: true,
       repeat: -1,
