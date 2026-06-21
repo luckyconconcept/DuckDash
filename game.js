@@ -239,6 +239,8 @@ class GameScene extends Phaser.Scene {
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
     this.obstaclePattern = [];
+    this.rewardTrailId = 0;
+    this.cupBrushIntroduced = false;
 
     addBackground(this);
     addWaterOverlay(this);
@@ -417,6 +419,9 @@ class GameScene extends Phaser.Scene {
 
     this.children.each((child) => {
       if (child.active && child.x < -180 && child.getData("cleanup")) {
+        if (child.getData("mode")) {
+          this.destroyObstacleVisuals(child);
+        }
         child.getData("label")?.destroy();
         child.destroy();
       }
@@ -493,6 +498,18 @@ class GameScene extends Phaser.Scene {
         prompt: "TAUCH!",
       },
       {
+        key: "toothbrush",
+        y: WATERLINE - 105,
+        scale: 0.5,
+        speedBoost: 16,
+        body: [128, 118, 106, 48],
+        gap: 800,
+        mode: "dive",
+        prompt: "TAUCH!",
+        visual: "cupbrush",
+        labelOffset: 124,
+      },
+      {
         key: "whirlpool",
         y: WATERLINE - 18,
         scale: 0.54,
@@ -503,7 +520,7 @@ class GameScene extends Phaser.Scene {
         prompt: "DRAUF!",
       },
     ];
-    const allowed = this.runTime < 24 ? options.slice(0, 2) : options;
+    const allowed = this.runTime < 18 ? options.slice(0, 2) : this.runTime < 38 ? options.slice(0, 3) : options;
     const pick = this.getNextObstacle(allowed);
     if (!this.hasObstacleGap(pick.gap)) {
       return;
@@ -519,12 +536,18 @@ class GameScene extends Phaser.Scene {
     obstacle.setData("cleanup", true);
     obstacle.setData("mode", pick.mode);
     obstacle.setData("prompt", pick.prompt);
+    obstacle.setData("labelOffset", pick.labelOffset ?? (pick.mode === "dive" ? 74 : 88));
 
-    const label = this.add.text(obstacle.x, obstacle.y - 88, pick.prompt, hudTextStyle(20, pick.mode === "dive" ? "#9df6ff" : "#ffd43f"));
+    if (pick.visual === "cupbrush") {
+      this.decorateCupBrush(obstacle);
+    }
+
+    const label = this.add.text(obstacle.x, obstacle.y - obstacle.getData("labelOffset"), pick.prompt, hudTextStyle(20, pick.mode === "dive" ? "#9df6ff" : "#ffd43f"));
     label.setOrigin(0.5);
     label.setDepth(9);
     label.setData("cleanup", true);
     obstacle.setData("label", label);
+    this.spawnRewardTrailForObstacle(obstacle, pick);
 
     this.tweens.add({
       targets: obstacle,
@@ -536,6 +559,101 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  decorateCupBrush(obstacle) {
+    obstacle.setAlpha(0.001);
+    const container = this.add.container(obstacle.x, obstacle.y);
+    container.setDepth(7);
+    container.setData("cleanup", true);
+
+    const cupBack = this.add.graphics();
+    cupBack.fillStyle(0x19bdd1, 0.9);
+    cupBack.fillRoundedRect(-64, -16, 128, 86, 18);
+    cupBack.lineStyle(4, 0xeaffff, 0.58);
+    cupBack.strokeRoundedRect(-64, -16, 128, 86, 18);
+
+    const water = this.add.ellipse(0, -15, 124, 28, 0x9df6ff, 0.58);
+    water.setStrokeStyle(3, 0xffffff, 0.38);
+
+    const brush = this.add.image(3, -72, "toothbrush").setScale(0.35).setAngle(-70);
+    const cupFront = this.add.graphics();
+    cupFront.fillStyle(0x0f9db3, 0.84);
+    cupFront.fillRoundedRect(-61, 8, 122, 64, 16);
+    cupFront.lineStyle(3, 0x71f1ff, 0.4);
+    cupFront.strokeRoundedRect(-61, 8, 122, 64, 16);
+
+    const shine = this.add.rectangle(-34, 34, 11, 46, 0xffffff, 0.22).setAngle(10);
+    const wake = this.add.ellipse(0, 74, 154, 28, 0x71f1ff, 0.24);
+
+    container.add([wake, cupBack, brush, water, cupFront, shine]);
+    obstacle.setData("visual", container);
+  }
+
+  syncObstacleVisuals(obstacle) {
+    const visual = obstacle.getData("visual");
+    if (!visual?.active) {
+      return;
+    }
+
+    visual.setPosition(obstacle.x, obstacle.y);
+    visual.setAlpha(obstacle.alpha > 0.01 ? obstacle.alpha : 1);
+  }
+
+  destroyObstacleVisuals(obstacle) {
+    obstacle.getData("visual")?.destroy();
+  }
+
+  spawnRewardTrailForObstacle(obstacle, config) {
+    const trailId = (this.rewardTrailId += 1);
+    const isDive = config.mode === "dive";
+    const points = isDive
+      ? [
+          { x: -255, y: WATERLINE - 54, key: "pearlBlue" },
+          { x: -150, y: WATERLINE - 62, key: "pearlBlue" },
+          { x: -42, y: WATERLINE - 56, key: "pearlGold" },
+        ]
+      : [
+          { x: -220, y: WATERLINE - 128, key: "pearlPink" },
+          { x: -118, y: WATERLINE - 184, key: "pearlBlue" },
+          { x: -12, y: WATERLINE - 218, key: "pearlGold" },
+          { x: 96, y: WATERLINE - 174, key: "pearlBlue" },
+        ];
+
+    points.forEach((point, index) => {
+      this.time.delayedCall(index * 55, () => {
+        if (this.isGameOver || !obstacle.active) {
+          return;
+        }
+
+        this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId);
+      });
+    });
+  }
+
+  spawnPearlAt(x, y, key, velocityX, trailId = null) {
+    const value = key === "pearlGold" ? 50 : 10;
+    const pearl = this.collectibles.create(x, y, key);
+    pearl.setScale(key === "pearlGold" ? 0.58 : 0.52);
+    pearl.body.setCircle(54);
+    pearl.body.setOffset(-6, -6);
+    pearl.setVelocityX(velocityX);
+    pearl.setDepth(6);
+    pearl.setData("value", value);
+    pearl.setData("cleanup", true);
+    pearl.setData("trailId", trailId);
+
+    this.tweens.add({
+      targets: pearl,
+      y: pearl.y - 18,
+      angle: 360,
+      yoyo: true,
+      repeat: -1,
+      duration: 860,
+      ease: "Sine.inOut",
+    });
+
+    return pearl;
+  }
+
   spawnCollectible() {
     if (this.isGameOver || this.isPaused) {
       return;
@@ -543,27 +661,8 @@ class GameScene extends Phaser.Scene {
 
     const roll = Phaser.Math.Between(1, 100);
     const key = roll > 84 ? "pearlGold" : roll > 48 ? "pearlBlue" : "pearlPink";
-    const value = key === "pearlGold" ? 50 : 10;
     const safeLane = Phaser.Utils.Array.GetRandom(COLLECTIBLE_LANES);
-    const pearl = this.collectibles.create(GAME_WIDTH + 100, safeLane, key);
-
-    pearl.setScale(key === "pearlGold" ? 0.58 : 0.52);
-    pearl.body.setCircle(54);
-    pearl.body.setOffset(-6, -6);
-    pearl.setVelocityX(-this.speed * 0.78);
-    pearl.setDepth(6);
-    pearl.setData("value", value);
-    pearl.setData("cleanup", true);
-
-    this.tweens.add({
-      targets: pearl,
-      y: pearl.y - 20,
-      angle: 360,
-      yoyo: true,
-      repeat: -1,
-      duration: 950,
-      ease: "Sine.inOut",
-    });
+    this.spawnPearlAt(GAME_WIDTH + 100, safeLane, key, -this.speed * 0.78);
   }
 
   spawnPowerUp() {
@@ -644,6 +743,7 @@ class GameScene extends Phaser.Scene {
 
       cleared += 1;
       obstacle.body.enable = false;
+      this.destroyObstacleVisuals(obstacle);
       obstacle.getData("label")?.destroy();
       this.tweens.add({
         targets: obstacle,
@@ -688,6 +788,7 @@ class GameScene extends Phaser.Scene {
 
     if (obstacle?.active) {
       obstacle.body.enable = false;
+      this.destroyObstacleVisuals(obstacle);
       obstacle.getData("label")?.destroy();
       this.tweens.add({
         targets: obstacle,
@@ -863,6 +964,7 @@ class GameScene extends Phaser.Scene {
 
   stompObstacle(obstacle) {
     obstacle.body.enable = false;
+    this.destroyObstacleVisuals(obstacle);
     obstacle.getData("label")?.destroy();
     this.score += 35;
     this.addCombo(3, "PLATSCH!", obstacle.x, obstacle.y - 90, "#ffd43f");
@@ -885,12 +987,13 @@ class GameScene extends Phaser.Scene {
 
   updateObstacleLabels() {
     this.obstacles.getChildren().forEach((obstacle) => {
+      this.syncObstacleVisuals(obstacle);
       const label = obstacle.getData("label");
       if (!label?.active) {
         return;
       }
 
-      label.setPosition(obstacle.x, obstacle.y - (obstacle.getData("mode") === "dive" ? 74 : 88));
+      label.setPosition(obstacle.x, obstacle.y - obstacle.getData("labelOffset"));
       label.setAlpha(Phaser.Math.Clamp((obstacle.x - 250) / 280, 0, 1));
     });
   }
@@ -902,6 +1005,7 @@ class GameScene extends Phaser.Scene {
 
     obstacle.setData("passed", true);
     obstacle.body.enable = false;
+    this.destroyObstacleVisuals(obstacle);
     obstacle.getData("label")?.destroy();
     this.score += 30;
     this.addCombo(3, "SAUBER DRUNTER!", obstacle.x, obstacle.y + 68, "#9df6ff");
@@ -944,6 +1048,12 @@ class GameScene extends Phaser.Scene {
 
     const desiredMode = this.obstaclePattern.shift();
     const candidates = options.filter((option) => option.mode === desiredMode);
+    const cupBrush = candidates.find((option) => option.visual === "cupbrush");
+    if (cupBrush && !this.cupBrushIntroduced) {
+      this.cupBrushIntroduced = true;
+      return cupBrush;
+    }
+
     return Phaser.Utils.Array.GetRandom(candidates.length > 0 ? candidates : options);
   }
 
