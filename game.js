@@ -1349,6 +1349,7 @@ class GameScene extends Phaser.Scene {
 
     this.isGameOver = true;
     this.physics.pause();
+    this.setPearlTweensPaused(true);
     this.cameras.main.shake(220, 0.012);
     this.duck.setTint(0xff6f59);
     this.duck.setAngle(-22);
@@ -1494,6 +1495,7 @@ class GameScene extends Phaser.Scene {
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
       this.physics.pause();
+      this.setPearlTweensPaused(true);
       this.showPauseOverlay();
     } else {
       this.resumeGame();
@@ -1533,6 +1535,7 @@ class GameScene extends Phaser.Scene {
     this.isPaused = false;
     this.destroyPauseOverlay();
     this.physics.resume();
+    this.setPearlTweensPaused(false);
   }
 
   destroyPauseOverlay() {
@@ -1548,7 +1551,24 @@ class GameScene extends Phaser.Scene {
   exitToMenu() {
     this.resetTouchDrift();
     this.isPaused = false;
+    this.setPearlTweensPaused(false);
     this.scene.start("MenuScene");
+  }
+
+  setPearlTweensPaused(paused) {
+    this.children.each((child) => {
+      if (!isPearlAnimationTarget(child)) {
+        return;
+      }
+
+      this.tweens.getTweensOf(child).forEach((tween) => {
+        if (paused) {
+          tween.pause();
+        } else if (tween.paused) {
+          tween.resume();
+        }
+      });
+    });
   }
 
   splash(x, y) {
@@ -1657,7 +1677,7 @@ class GameScene extends Phaser.Scene {
       const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
       const travel = Phaser.Math.Between(distance * 0.35, distance);
       const particle = this.add.image(x, y, key).setScale(scale).setAlpha(0.9).setDepth(depth);
-      this.tweens.add({
+      const tween = this.tweens.add({
         targets: particle,
         x: x + Math.cos(angle) * travel,
         y: y + Math.sin(angle) * travel * 0.72,
@@ -1668,6 +1688,9 @@ class GameScene extends Phaser.Scene {
         ease: "Cubic.out",
         onComplete: () => particle.destroy(),
       });
+      if ((this.isPaused || this.isGameOver) && isPearlAnimationTarget(particle)) {
+        tween.pause();
+      }
     }
   }
 
@@ -2323,6 +2346,10 @@ function getCollectibleMessage(key) {
     return "GOLDPERLE!";
   }
   return "PERLE!";
+}
+
+function isPearlAnimationTarget(target) {
+  return ["pearlPink", "pearlBlue", "pearlGold", "shellPearl", "starfishBonus"].includes(target?.texture?.key);
 }
 
 function makeRoundButton(scene, x, y, label) {
