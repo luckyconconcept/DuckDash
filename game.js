@@ -2237,6 +2237,7 @@ function addWaterOverlay(scene) {
   wash.fillRect(0, WATER_SURFACE_Y + 10, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y - 10);
 
   addAnimatedWaterSurface(scene, baseDepth + 0.18);
+  addSurfaceFoamFlecks(scene, baseDepth + 0.26);
   addSurfaceShimmer(scene, baseDepth + 0.24);
 
   addBathtubRunoff(scene, baseDepth + 0.35);
@@ -2272,9 +2273,10 @@ function addCurrentSprites(scene, depth) {
 
 function addAnimatedWaterSurface(scene, depth) {
   const bands = [
-    { y: WATER_SURFACE_Y + 4, color: 0xeaffff, alpha: 0.18, width: 10, amp: 5, wave: 86, speed: 3000, drift: -220 },
-    { y: WATER_SURFACE_Y + 15, color: 0x7cfaff, alpha: 0.14, width: 7, amp: 7, wave: 118, speed: 4200, drift: 260 },
-    { y: WATER_SURFACE_Y + 28, color: 0xffffff, alpha: 0.1, width: 5, amp: 4, wave: 64, speed: 3600, drift: -180 },
+    { y: WATER_SURFACE_Y + 2, color: 0xeaffff, alpha: 0.34, width: 17, amp: 10, wave: 72, speed: 1700, drift: -430, bob: 11 },
+    { y: WATER_SURFACE_Y + 13, color: 0x7cfaff, alpha: 0.28, width: 13, amp: 13, wave: 104, speed: 2200, drift: 470, bob: -10 },
+    { y: WATER_SURFACE_Y + 25, color: 0xffffff, alpha: 0.2, width: 10, amp: 9, wave: 58, speed: 2000, drift: -360, bob: 8 },
+    { y: WATER_SURFACE_Y + 39, color: 0x9df6ff, alpha: 0.16, width: 8, amp: 11, wave: 132, speed: 2800, drift: 390, bob: -7 },
   ];
 
   bands.forEach((band, index) => {
@@ -2284,10 +2286,10 @@ function addAnimatedWaterSurface(scene, depth) {
     scene.tweens.add({
       targets: surface,
       x: surface.x + band.drift,
-      y: index % 2 === 0 ? 3 : -3,
-      alpha: 0.62,
+      y: band.bob,
+      alpha: 0.48,
       duration: band.speed,
-      delay: index * 280,
+      delay: index * 180,
       yoyo: true,
       repeat: -1,
       ease: "Sine.inOut",
@@ -2311,6 +2313,35 @@ function drawSoftSurfaceBand(scene, band) {
 
   graphic.strokePath();
   return graphic;
+}
+
+function addSurfaceFoamFlecks(scene, depth) {
+  for (let index = 0; index < 30; index += 1) {
+    const fleck = scene.add.ellipse(
+      Phaser.Math.Between(12, GAME_WIDTH - 12),
+      WATER_SURFACE_Y + Phaser.Math.Between(2, 30),
+      Phaser.Math.Between(30, 92),
+      Phaser.Math.Between(4, 10),
+      0xeaffff,
+      Phaser.Math.FloatBetween(0.16, 0.34),
+    );
+    fleck.setDepth(depth);
+    fleck.setBlendMode(Phaser.BlendModes.SCREEN);
+    fleck.setAngle(Phaser.Math.Between(-12, 12));
+
+    scene.tweens.add({
+      targets: fleck,
+      x: fleck.x + Phaser.Math.Between(-320, 320),
+      y: fleck.y + Phaser.Math.Between(-10, 12),
+      alpha: Phaser.Math.FloatBetween(0.04, 0.14),
+      scaleX: Phaser.Math.FloatBetween(1.55, 2.4),
+      duration: Phaser.Math.Between(1200, 2600),
+      delay: Phaser.Math.Between(0, 1500),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  }
 }
 
 function addWaterCausticRibbons(scene, depth) {
