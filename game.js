@@ -3,7 +3,7 @@ const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
 const WATERLINE = 530;
 const STORAGE_KEY = "duck-dash-stats";
-const COLLECTIBLE_LANES = [360, 324, 288];
+const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
 const DIVE_RECOVERY_DURATION = 260;
@@ -455,7 +455,7 @@ class GameScene extends Phaser.Scene {
     this.duck.setGravityY(1320);
     this.duck.setDepth(8);
 
-    this.ground = this.add.rectangle(GAME_WIDTH / 2, WATERLINE + 30, GAME_WIDTH, 24, 0x21a8c9, 0);
+    this.ground = this.add.rectangle(GAME_WIDTH / 2, WATERLINE + 8, GAME_WIDTH, 24, 0x21a8c9, 0);
     this.physics.add.existing(this.ground, true);
     this.physics.add.collider(this.duck, this.ground);
     this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
@@ -1022,8 +1022,8 @@ class GameScene extends Phaser.Scene {
     const value = getCollectibleValue(key);
     const pearl = this.collectibles.create(x, y, key);
     pearl.setScale(getCollectibleScale(key));
-    pearl.body.setCircle(36);
-    pearl.body.setOffset(12, 12);
+    pearl.body.setCircle(24);
+    pearl.body.setOffset(24, 24);
     pearl.setVelocityX(velocityX);
     pearl.setDepth(6);
     pearl.setData("value", value);
@@ -2070,10 +2070,10 @@ class GameScene extends Phaser.Scene {
 
   pullNearbyCollectibles() {
     const magnetActive = this.isMagnetActive();
-    const attractDistance = magnetActive ? 315 : 54;
+    const attractDistance = magnetActive ? 315 : 24;
     const attractStrength = magnetActive ? 0.062 : 0;
-    const collectDistance = magnetActive ? 112 : 30;
-    const lateCatchDistance = magnetActive ? 138 : 32;
+    const collectDistance = magnetActive ? 112 : 20;
+    const lateCatchDistance = magnetActive ? 138 : 20;
 
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
