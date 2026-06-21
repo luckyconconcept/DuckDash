@@ -79,17 +79,18 @@ class MenuScene extends Phaser.Scene {
       ease: "Sine.inOut",
     });
 
-    const startButton = makeButton(this, GAME_WIDTH / 2, 622, "START");
+    const startButton = makeButton(this, GAME_WIDTH / 2, 606, "START");
     startButton.on("pointerdown", () => this.scene.start("GameScene"));
 
     this.add
-      .text(GAME_WIDTH / 2, 678, "Leertaste / Klick / Tap = Springen  |  Pfeil runter / Swipe = Tauchen  |  ESC = Pause", {
+      .text(GAME_WIDTH / 2, 674, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen", {
         fontFamily: "Trebuchet MS",
-        fontSize: "20px",
+        fontSize: "22px",
         fontStyle: "700",
         color: "#eaffff",
         stroke: "#123044",
         strokeThickness: 4,
+        align: "center",
       })
       .setOrigin(0.5);
 
