@@ -110,6 +110,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    this.hasStarted = false;
     this.stats = readStats();
     addBackground(this);
     addWaterOverlay(this);
@@ -193,12 +194,44 @@ class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(3);
 
-    this.input.keyboard.once("keydown-SPACE", () => this.startGame());
+    this.input.on("pointerdown", () => this.startGame());
+    this.input.keyboard.on("keydown", (event) => {
+      if (event.code === "Space" || event.code === "Enter") {
+        this.startGame();
+      }
+    });
+    this.installNativeStartFallback();
   }
 
   startGame() {
+    if (this.hasStarted) {
+      return;
+    }
+
+    this.hasStarted = true;
     SoundFX.unlock();
     this.scene.start("GameScene");
+  }
+
+  installNativeStartFallback() {
+    const startFromDom = () => this.startGame();
+    const startFromKey = (event) => {
+      if (event.code === "Space" || event.code === "Enter") {
+        this.startGame();
+      }
+    };
+
+    this.game.canvas.addEventListener("pointerdown", startFromDom);
+    this.game.canvas.addEventListener("click", startFromDom);
+    this.game.canvas.addEventListener("touchstart", startFromDom, { passive: true });
+    window.addEventListener("keydown", startFromKey);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.canvas.removeEventListener("pointerdown", startFromDom);
+      this.game.canvas.removeEventListener("click", startFromDom);
+      this.game.canvas.removeEventListener("touchstart", startFromDom);
+      window.removeEventListener("keydown", startFromKey);
+    });
   }
 
   menuSplash(x, y) {
@@ -1254,9 +1287,9 @@ class GameScene extends Phaser.Scene {
       bubble.setAlpha(alive ? 0.86 : 0.2);
       bubble.setScale(alive ? (index < this.shieldCharges ? 1.18 : 1) : 0.78);
       if (index < this.shieldCharges) {
-        bubble.setTint(0x9df6ff);
+        bubble.setFillStyle(0xeaffff, 0.92);
       } else {
-        bubble.clearTint();
+        bubble.setFillStyle(0x9df6ff, 0.86);
       }
     });
   }
@@ -1656,7 +1689,8 @@ function makeButton(scene, x, y, label) {
   text.setOrigin(0.5);
   container.add([bg, text]);
   container.setSize(width, 68);
-  container.setInteractive({ useHandCursor: true });
+  container.setInteractive(new Phaser.Geom.Rectangle(-halfWidth, -34, width, 68), Phaser.Geom.Rectangle.Contains);
+  container.input.cursor = "pointer";
   container.on("pointerover", () => container.setScale(1.04));
   container.on("pointerout", () => container.setScale(1));
   return container;
@@ -1672,7 +1706,8 @@ function makeRoundButton(scene, x, y, label) {
   const text = scene.add.text(0, 0, label, hudTextStyle(28, "#ffffff")).setOrigin(0.5);
   container.add([bg, text]);
   container.setSize(68, 68);
-  container.setInteractive({ useHandCursor: true });
+  container.setInteractive(new Phaser.Geom.Rectangle(-34, -34, 68, 68), Phaser.Geom.Rectangle.Contains);
+  container.input.cursor = "pointer";
   container.setDepth(20);
   return container;
 }
