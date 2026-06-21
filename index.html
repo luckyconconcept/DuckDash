@@ -2,16 +2,20 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Building Challenge - Dein Minigame</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Duck & Dash ist ein schnelles Browser-Minispiel mit einer Gummiente im chaotischen Badezimmer."
+    />
+    <title>Duck & Dash</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main>
-      <h1>Dein Minigame</h1>
-      <canvas id="game" width="800" height="600"></canvas>
-      <p id="hint">Dein Spiel startet in <code>game.js</code>. Viel Erfolg!</p>
+    <main class="game-shell" aria-label="Duck & Dash browser game">
+      <div id="game"></div>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script src="game.js"></script>
   </body>
 </html>
