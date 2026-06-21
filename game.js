@@ -1,8 +1,9 @@
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
-const WATERLINE = 560;
+const WATER_SURFACE_Y = 456;
+const WATERLINE = 530;
 const STORAGE_KEY = "duck-dash-stats";
-const COLLECTIBLE_LANES = [430, 400, 368];
+const COLLECTIBLE_LANES = [360, 324, 288];
 const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
 const DIVE_RECOVERY_DURATION = 260;
@@ -96,7 +97,7 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("bg", "assets/bathroom_bg_clean.jpg?v=20260621-assets3");
+    this.load.image("bg", "assets/bathroom_bg_flooded.png?v=20260621-bg1");
     this.load.image("logo", "assets/logo.png");
     this.load.image("duck", "assets/duck.png");
     this.load.image("soap", "assets/soap.png");
@@ -454,7 +455,7 @@ class GameScene extends Phaser.Scene {
     this.duck.setGravityY(1320);
     this.duck.setDepth(8);
 
-    this.ground = this.add.rectangle(GAME_WIDTH / 2, WATERLINE + 78, GAME_WIDTH, 24, 0x21a8c9, 0);
+    this.ground = this.add.rectangle(GAME_WIDTH / 2, WATERLINE + 30, GAME_WIDTH, 24, 0x21a8c9, 0);
     this.physics.add.existing(this.ground, true);
     this.physics.add.collider(this.duck, this.ground);
     this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
@@ -1021,8 +1022,8 @@ class GameScene extends Phaser.Scene {
     const value = getCollectibleValue(key);
     const pearl = this.collectibles.create(x, y, key);
     pearl.setScale(getCollectibleScale(key));
-    pearl.body.setCircle(54);
-    pearl.body.setOffset(-6, -6);
+    pearl.body.setCircle(36);
+    pearl.body.setOffset(12, 12);
     pearl.setVelocityX(velocityX);
     pearl.setDepth(6);
     pearl.setData("value", value);
@@ -2071,8 +2072,8 @@ class GameScene extends Phaser.Scene {
     const magnetActive = this.isMagnetActive();
     const attractDistance = magnetActive ? 315 : 54;
     const attractStrength = magnetActive ? 0.062 : 0;
-    const collectDistance = magnetActive ? 112 : 48;
-    const lateCatchDistance = magnetActive ? 138 : 54;
+    const collectDistance = magnetActive ? 112 : 30;
+    const lateCatchDistance = magnetActive ? 138 : 32;
 
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
@@ -2159,17 +2160,17 @@ class GameScene extends Phaser.Scene {
 
 function addBackground(scene) {
   scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, "bg").setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
-  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x06324b, 0.1);
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x06324b, 0.04);
 }
 
 function addWaterOverlay(scene) {
   const baseDepth = 1;
-  const water = scene.add.graphics();
-  water.setDepth(baseDepth);
-  water.fillGradientStyle(0x27d4ee, 0x27d4ee, 0x0aa8d7, 0x0877b8, 0.18, 0.18, 0.32, 0.34);
-  water.fillRect(0, WATERLINE - 18, GAME_WIDTH, GAME_HEIGHT - WATERLINE + 18);
+  const wash = scene.add.graphics();
+  wash.setDepth(baseDepth);
+  wash.fillGradientStyle(0x6ff4ff, 0x6ff4ff, 0x0877b8, 0x043d76, 0.05, 0.05, 0.12, 0.16);
+  wash.fillRect(0, WATER_SURFACE_Y - 8, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y + 8);
 
-  const deepCurrent = drawWaterCurrent(scene, WATERLINE + 48, 0x7cfaff, 0.07, 5, 160, 4);
+  const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.055, 5, 168, 4);
   deepCurrent.setDepth(baseDepth + 0.1);
   scene.tweens.add({
     targets: deepCurrent,
@@ -2179,7 +2180,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const nearCurrent = drawWaterCurrent(scene, WATERLINE + 112, 0xd8ffff, 0.06, 6, 210, 3);
+  const nearCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 172, 0xd8ffff, 0.045, 6, 220, 3);
   nearCurrent.setDepth(baseDepth + 0.15);
   scene.tweens.add({
     targets: nearCurrent,
@@ -2189,7 +2190,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const surface = drawWaterSurface(scene, 0xa4fbff, 0.2, 0);
+  const surface = drawWaterSurface(scene, 0xffffff, 0.26, 0);
   surface.setDepth(baseDepth + 0.3);
   scene.tweens.add({
     targets: surface,
@@ -2199,7 +2200,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const surfaceFoam = drawWaterSurface(scene, 0xffffff, 0.12, 18);
+  const surfaceFoam = drawWaterSurface(scene, 0x6ff4ff, 0.18, 18);
   surfaceFoam.setDepth(baseDepth + 0.31);
   scene.tweens.add({
     targets: surfaceFoam,
@@ -2209,6 +2210,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
+  addBathtubRunoff(scene, baseDepth + 0.35);
   addWaterGlints(scene, baseDepth + 0.2);
 }
 
@@ -2238,10 +2240,10 @@ function drawWaterSurface(scene, color, alpha, phase) {
   graphic.x = -180;
   graphic.lineStyle(3, color, alpha);
   graphic.beginPath();
-  graphic.moveTo(0, WATERLINE - 8);
+  graphic.moveTo(0, WATER_SURFACE_Y);
 
   for (let x = 0; x <= width; x += 14) {
-    const y = WATERLINE - 8 + Math.sin((x + phase) / 42) * 4 + Math.sin((x + phase) / 105) * 2;
+    const y = WATER_SURFACE_Y + Math.sin((x + phase) / 42) * 4 + Math.sin((x + phase) / 105) * 2;
     graphic.lineTo(x, y);
   }
 
@@ -2249,11 +2251,54 @@ function drawWaterSurface(scene, color, alpha, phase) {
   return graphic;
 }
 
+function addBathtubRunoff(scene, depth) {
+  const streams = [
+    { x: 274, y: 296, length: 86, delay: 0 },
+    { x: 320, y: 308, length: 74, delay: 700 },
+    { x: 504, y: 288, length: 108, delay: 300 },
+    { x: 528, y: 304, length: 92, delay: 1150 },
+  ];
+
+  streams.forEach((stream) => {
+    const line = scene.add.rectangle(stream.x, stream.y + stream.length / 2, 3, stream.length, 0x9df6ff, 0.16);
+    line.setDepth(depth);
+    line.setOrigin(0.5);
+
+    scene.tweens.add({
+      targets: line,
+      alpha: 0.05,
+      duration: 1800,
+      delay: stream.delay,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+
+    const drop = scene.add.ellipse(stream.x, stream.y + 8, 7, 16, 0xd8ffff, 0.48);
+    drop.setDepth(depth + 0.01);
+    scene.tweens.add({
+      targets: drop,
+      y: stream.y + stream.length - 4,
+      alpha: 0.06,
+      scaleY: 1.8,
+      duration: 2200,
+      delay: stream.delay,
+      repeat: -1,
+      ease: "Sine.in",
+      onRepeat: () => {
+        drop.setY(stream.y + 8);
+        drop.setAlpha(0.48);
+        drop.setScale(1);
+      },
+    });
+  });
+}
+
 function addWaterGlints(scene, depth) {
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 10; index += 1) {
     const glint = scene.add.ellipse(
       Phaser.Math.Between(20, GAME_WIDTH - 20),
-      Phaser.Math.Between(WATERLINE + 28, GAME_HEIGHT - 26),
+      Phaser.Math.Between(WATER_SURFACE_Y + 34, GAME_HEIGHT - 26),
       Phaser.Math.Between(42, 98),
       Phaser.Math.Between(4, 9),
       0xeaffff,
