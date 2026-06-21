@@ -26,6 +26,7 @@ class BootScene extends Phaser.Scene {
     this.load.image("pearlPink", "assets/pearl_pink.png");
     this.load.image("pearlBlue", "assets/pearl_blue.png");
     this.load.image("pearlGold", "assets/pearl_gold.png");
+    this.load.image("quackBomb", "assets/quack_bomb.png");
   }
 
   create() {
@@ -104,14 +105,18 @@ class GameScene extends Phaser.Scene {
   create() {
     this.stats = readStats();
     this.score = 0;
+    this.runTime = 0;
     this.pearls = 0;
     this.lastMilestone = 0;
-    this.speed = 360;
+    this.speed = 340;
     this.spawnDelay = 1450;
     this.collectDelay = 1150;
+    this.lastGroundedAt = 0;
     this.isGameOver = false;
     this.isPaused = false;
+    this.touchStartX = 0;
     this.touchStartY = 0;
+    this.touchSwipeHandled = false;
 
     addBackground(this);
     addWaterOverlay(this);
@@ -132,11 +137,19 @@ class GameScene extends Phaser.Scene {
       callback: this.spawnCollectible,
       callbackScope: this,
     });
+
+    this.spawnPowerUpEvent = this.time.addEvent({
+      delay: 8500,
+      loop: true,
+      callback: this.spawnPowerUp,
+      callbackScope: this,
+    });
   }
 
   createWorld() {
     this.obstacles = this.physics.add.group({ allowGravity: false, immovable: true });
     this.collectibles = this.physics.add.group({ allowGravity: false });
+    this.powerUps = this.physics.add.group({ allowGravity: false });
 
     this.duck = this.physics.add.sprite(220, WATERLINE - 80, "duck");
     this.duck.setScale(0.52);
@@ -151,6 +164,7 @@ class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.duck, this.ground);
     this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
     this.physics.add.overlap(this.duck, this.collectibles, this.collectPearl, null, this);
+    this.physics.add.overlap(this.duck, this.powerUps, this.collectPowerUp, null, this);
 
     this.splashEmitter = this.add.particles(0, 0, "pearlBlue", {
       speed: { min: 80, max: 190 },
@@ -163,10 +177,11 @@ class GameScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.duck,
-      y: WATERLINE - 92,
+      scaleX: 0.54,
+      scaleY: 0.5,
       yoyo: true,
       repeat: -1,
-      duration: 1050,
+      duration: 760,
       ease: "Sine.inOut",
     });
   }
@@ -205,13 +220,28 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-ESC", () => this.togglePause());
 
     this.input.on("pointerdown", (pointer) => {
+      this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
-      this.jump();
+      this.touchSwipeHandled = false;
+    });
+
+    this.input.on("pointermove", (pointer) => {
+      if (this.touchSwipeHandled || !pointer.isDown) {
+        return;
+      }
+
+      const deltaY = pointer.y - this.touchStartY;
+      if (deltaY > 52) {
+        this.touchSwipeHandled = true;
+        this.dive();
+      }
     });
 
     this.input.on("pointerup", (pointer) => {
-      if (pointer.y - this.touchStartY > 60) {
-        this.dive();
+      const deltaX = Math.abs(pointer.x - this.touchStartX);
+      const deltaY = pointer.y - this.touchStartY;
+      if (!this.touchSwipeHandled && deltaY < 42 && deltaX < 54) {
+        this.jump();
       }
     });
   }
@@ -222,12 +252,14 @@ class GameScene extends Phaser.Scene {
     }
 
     const deltaSeconds = delta / 1000;
+    this.runTime += deltaSeconds;
     this.score += deltaSeconds * 12;
-    this.speed = 360 + Math.min(380, this.score * 0.42);
-
-    if (this.spawnObstacleEvent.delay > 820) {
-      this.spawnObstacleEvent.delay = Math.max(820, this.spawnDelay - this.score * 1.4);
+    this.speed = 340 + Math.min(360, this.runTime * 8);
+    if (this.duck.body.blocked.down) {
+      this.lastGroundedAt = this.time.now;
     }
+
+    this.spawnObstacleEvent.delay = this.getObstacleDelay();
 
     this.scoreText.setText(Math.floor(this.score).toLocaleString("de-DE"));
     this.pearlText.setText(`Perlen ${this.pearls}`);
@@ -250,7 +282,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.duck.body.blocked.down || this.duck.y > WATERLINE - 118) {
+    if (this.duck.body.blocked.down || this.time.now - this.lastGroundedAt < 130) {
       this.duck.setVelocityY(-640);
       this.splash(this.duck.x - 48, this.duck.y + 42);
     }
@@ -271,18 +303,22 @@ class GameScene extends Phaser.Scene {
     }
 
     const options = [
-      { key: "soap", y: WATERLINE - 50, scale: 0.68, score: 18, body: [170, 74, 42, 34] },
-      { key: "toothbrush", y: WATERLINE - 80, scale: 0.55, score: 32, body: [245, 66, 48, 92] },
-      { key: "whirlpool", y: WATERLINE - 42, scale: 0.62, score: 44, body: [220, 98, 50, 60] },
+      { key: "soap", y: WATERLINE - 50, scale: 0.68, speedBoost: 18, body: [170, 74, 42, 34], gap: 520 },
+      { key: "toothbrush", y: WATERLINE - 80, scale: 0.55, speedBoost: 32, body: [245, 66, 48, 92], gap: 600 },
+      { key: "whirlpool", y: WATERLINE - 42, scale: 0.62, speedBoost: 44, body: [220, 98, 50, 60], gap: 640 },
     ];
-    const allowed = this.score < 260 ? options.slice(0, 2) : options;
+    const allowed = this.runTime < 24 ? options.slice(0, 2) : options;
     const pick = Phaser.Utils.Array.GetRandom(allowed);
+    if (!this.hasObstacleGap(pick.gap)) {
+      return;
+    }
+
     const obstacle = this.obstacles.create(GAME_WIDTH + 120, pick.y, pick.key);
 
     obstacle.setScale(pick.scale);
     obstacle.body.setSize(pick.body[0], pick.body[1]);
     obstacle.body.setOffset(pick.body[2], pick.body[3]);
-    obstacle.setVelocityX(-this.speed - pick.score);
+    obstacle.setVelocityX(-this.speed - pick.speedBoost);
     obstacle.setDepth(7);
     obstacle.setData("cleanup", true);
 
@@ -304,7 +340,8 @@ class GameScene extends Phaser.Scene {
     const roll = Phaser.Math.Between(1, 100);
     const key = roll > 84 ? "pearlGold" : roll > 48 ? "pearlBlue" : "pearlPink";
     const value = key === "pearlGold" ? 50 : 10;
-    const pearl = this.collectibles.create(GAME_WIDTH + 100, Phaser.Math.Between(260, 475), key);
+    const safeLane = this.hasObstacleGap(440) ? Phaser.Math.Between(260, 475) : Phaser.Math.Between(250, 360);
+    const pearl = this.collectibles.create(GAME_WIDTH + 100, safeLane, key);
 
     pearl.setScale(key === "pearlGold" ? 0.62 : 0.56);
     pearl.body.setCircle(38);
@@ -324,6 +361,29 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  spawnPowerUp() {
+    if (this.isGameOver || this.isPaused || this.runTime < 12 || !this.hasObstacleGap(560)) {
+      return;
+    }
+
+    const bomb = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), "quackBomb");
+    bomb.setScale(0.78);
+    bomb.body.setCircle(48);
+    bomb.setVelocityX(-this.speed * 0.82);
+    bomb.setDepth(6);
+    bomb.setData("cleanup", true);
+
+    this.tweens.add({
+      targets: bomb,
+      y: bomb.y - 18,
+      angle: 10,
+      yoyo: true,
+      repeat: -1,
+      duration: 780,
+      ease: "Sine.inOut",
+    });
+  }
+
   collectPearl(_, pearl) {
     this.score += pearl.getData("value");
     this.pearls += 1;
@@ -335,6 +395,53 @@ class GameScene extends Phaser.Scene {
       duration: 170,
       onComplete: () => pearl.destroy(),
     });
+  }
+
+  collectPowerUp(_, powerUp) {
+    powerUp.destroy();
+    this.activateQuackBomb();
+  }
+
+  activateQuackBomb() {
+    this.score += 35;
+    this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
+    this.cameras.main.shake(120, 0.006);
+
+    const ring = this.add.circle(this.duck.x, this.duck.y, 18);
+    ring.setDepth(18);
+    ring.setStrokeStyle(8, 0x6ff4ff, 0.9);
+    this.tweens.add({
+      targets: ring,
+      radius: 520,
+      alpha: 0,
+      duration: 420,
+      ease: "Cubic.out",
+      onComplete: () => ring.destroy(),
+    });
+
+    let cleared = 0;
+    this.obstacles.getChildren().forEach((obstacle) => {
+      if (!obstacle.active || obstacle.x < this.duck.x - 60 || obstacle.x > GAME_WIDTH + 140) {
+        return;
+      }
+
+      cleared += 1;
+      obstacle.body.enable = false;
+      this.tweens.add({
+        targets: obstacle,
+        x: obstacle.x + 210,
+        y: obstacle.y - 80,
+        angle: obstacle.angle + 50,
+        alpha: 0,
+        duration: 320,
+        ease: "Back.in",
+        onComplete: () => obstacle.destroy(),
+      });
+    });
+
+    if (cleared > 0) {
+      this.score += cleared * 25;
+    }
   }
 
   handleHit() {
@@ -402,6 +509,36 @@ class GameScene extends Phaser.Scene {
 
   splash(x, y) {
     this.splashEmitter.emitParticleAt(x, y, 16);
+  }
+
+  hasObstacleGap(requiredGap) {
+    return !this.obstacles.getChildren().some((obstacle) => obstacle.active && obstacle.x > GAME_WIDTH - requiredGap);
+  }
+
+  getObstacleDelay() {
+    if (this.runTime > 95) {
+      return 920;
+    }
+    if (this.runTime > 55) {
+      return 1060;
+    }
+    if (this.runTime > 25) {
+      return 1240;
+    }
+    return 1450;
+  }
+
+  showFloatingText(message, x, y, color) {
+    const text = this.add.text(x, y, message, hudTextStyle(28, color)).setOrigin(0.5).setDepth(22);
+    this.tweens.add({
+      targets: text,
+      y: y - 54,
+      alpha: 0,
+      scale: 1.16,
+      duration: 880,
+      ease: "Cubic.out",
+      onComplete: () => text.destroy(),
+    });
   }
 
   showQuip() {
