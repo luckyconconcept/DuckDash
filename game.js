@@ -12,6 +12,12 @@ const DUCK_MAX_X = 420;
 const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
+const MENU_START_HIT = {
+  x: GAME_WIDTH / 2 - 160,
+  y: 518,
+  width: 320,
+  height: 72,
+};
 
 const QUIPS = [
   "QUAK!",
@@ -100,6 +106,10 @@ class BootScene extends Phaser.Scene {
     this.load.image("pearlBlue", "assets/pearl_blue.png");
     this.load.image("pearlGold", "assets/pearl_gold.png");
     this.load.image("quackBomb", "assets/quack_bomb.png");
+    this.load.image("cupBrush", "assets/cup_brush.png");
+    this.load.image("powerupMagnet", "assets/powerup_magnet.png");
+    this.load.image("powerupShield", "assets/powerup_shield.png");
+    this.load.image("powerupTurbo", "assets/powerup_turbo.png");
   }
 
   create() {
@@ -124,9 +134,9 @@ class MenuScene extends Phaser.Scene {
     const card = this.add.graphics();
     card.setDepth(2);
     card.fillStyle(0x0a3a5d, 0.4);
-    card.fillRoundedRect(360, 58, 560, 590, 28);
+    card.fillRoundedRect(360, 48, 560, 630, 28);
     card.lineStyle(4, 0x80f2ff, 0.46);
-    card.strokeRoundedRect(360, 58, 560, 590, 28);
+    card.strokeRoundedRect(360, 48, 560, 630, 28);
 
     this.add.image(GAME_WIDTH / 2, 170, "logo").setScale(1.02).setDepth(3);
 
@@ -172,7 +182,7 @@ class MenuScene extends Phaser.Scene {
       callback: () => this.menuSplash(this.duck.x - 54, this.duck.y + 42),
     });
 
-    const startButton = makeButton(this, GAME_WIDTH / 2, 598, "START");
+    const startButton = makeButton(this, GAME_WIDTH / 2, 554, "START");
     startButton.setDepth(5);
     startButton.on("pointerdown", () => this.startGame());
     this.tweens.add({
@@ -184,10 +194,14 @@ class MenuScene extends Phaser.Scene {
       ease: "Sine.inOut",
     });
 
+    const highscoreButton = makeButton(this, GAME_WIDTH / 2, 630, "HIGHSCORE");
+    highscoreButton.setDepth(5);
+    highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
+
     this.add
-      .text(GAME_WIDTH / 2, 666, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen\nLinks/Rechts = Driften", {
+      .text(GAME_WIDTH / 2, 692, "Space / Tap = Springen   Pfeil runter / Swipe = Tauchen   Links/Rechts = Driften", {
         fontFamily: "Trebuchet MS",
-        fontSize: "22px",
+        fontSize: "17px",
         fontStyle: "700",
         color: "#eaffff",
         stroke: "#123044",
@@ -197,7 +211,6 @@ class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(3);
 
-    this.input.on("pointerdown", () => this.startGame());
     this.input.keyboard.on("keydown", (event) => {
       if (event.code === "Space" || event.code === "Enter") {
         this.startGame();
@@ -217,7 +230,11 @@ class MenuScene extends Phaser.Scene {
   }
 
   installNativeStartFallback() {
-    const startFromDom = () => this.startGame();
+    const startFromDom = (event) => {
+      if (this.isStartPointer(event)) {
+        this.startGame();
+      }
+    };
     const startFromKey = (event) => {
       if (event.code === "Space" || event.code === "Enter") {
         this.startGame();
@@ -237,6 +254,24 @@ class MenuScene extends Phaser.Scene {
     });
   }
 
+  isStartPointer(event) {
+    const clientX = event.touches?.[0]?.clientX ?? event.clientX;
+    const clientY = event.touches?.[0]?.clientY ?? event.clientY;
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+      return false;
+    }
+
+    const rect = this.game.canvas.getBoundingClientRect();
+    const gameX = ((clientX - rect.left) / rect.width) * GAME_WIDTH;
+    const gameY = ((clientY - rect.top) / rect.height) * GAME_HEIGHT;
+    return (
+      gameX >= MENU_START_HIT.x &&
+      gameX <= MENU_START_HIT.x + MENU_START_HIT.width &&
+      gameY >= MENU_START_HIT.y &&
+      gameY <= MENU_START_HIT.y + MENU_START_HIT.height
+    );
+  }
+
   menuSplash(x, y) {
     for (let index = 0; index < 8; index += 1) {
       const bubble = this.add.image(x, y, "pearlBlue").setScale(0.1).setAlpha(0.72).setDepth(3);
@@ -251,6 +286,67 @@ class MenuScene extends Phaser.Scene {
         onComplete: () => bubble.destroy(),
       });
     }
+  }
+}
+
+class HighscoreScene extends Phaser.Scene {
+  constructor() {
+    super("HighscoreScene");
+  }
+
+  create() {
+    this.stats = readStats();
+    addBackground(this);
+    addWaterOverlay(this);
+
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, 0.42).setDepth(1);
+
+    const card = this.add.graphics();
+    card.setDepth(2);
+    card.fillStyle(0x0a3a5d, 0.9);
+    card.fillRoundedRect(300, 76, 680, 560, 26);
+    card.lineStyle(4, 0x69e8ff, 0.55);
+    card.strokeRoundedRect(300, 76, 680, 560, 26);
+
+    this.add.image(GAME_WIDTH / 2, 142, "logo").setScale(0.72).setDepth(3);
+    this.add.text(GAME_WIDTH / 2, 238, "HIGHSCORE", titleStyle(46, "#ffd43f")).setOrigin(0.5).setDepth(3);
+    this.add
+      .text(
+        GAME_WIDTH / 2,
+        296,
+        `Bestwert ${this.stats.highscore.toLocaleString("de-DE")}   Runden ${this.stats.games.toLocaleString("de-DE")}`,
+        hudTextStyle(24, "#9df6ff"),
+      )
+      .setOrigin(0.5)
+      .setDepth(3);
+
+    const scores = this.stats.scores.slice(0, 5);
+    if (scores.length === 0) {
+      this.add.text(GAME_WIDTH / 2, 404, "Noch keine Runde gespeichert", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(3);
+    } else {
+      scores.forEach((entry, index) => {
+        const y = 366 + index * 48;
+        const rankColor = index === 0 ? "#ffd43f" : "#ffffff";
+        this.add.text(402, y, `${index + 1}.`, hudTextStyle(26, rankColor)).setOrigin(0, 0.5).setDepth(3);
+        this.add.text(470, y, entry.score.toLocaleString("de-DE"), hudTextStyle(28, rankColor)).setOrigin(0, 0.5).setDepth(3);
+        this.add
+          .text(704, y, entry.pearls > 0 ? `${entry.pearls.toLocaleString("de-DE")} Perlen` : "Bestwert", hudTextStyle(22, "#9df6ff"))
+          .setOrigin(0, 0.5)
+          .setDepth(3);
+      });
+    }
+
+    const startButton = makeButton(this, GAME_WIDTH / 2 - 150, 574, "START");
+    startButton.setDepth(4);
+    startButton.on("pointerdown", () => this.scene.start("GameScene"));
+
+    const backButton = makeButton(this, GAME_WIDTH / 2 + 170, 574, "ZURUECK");
+    backButton.setDepth(4);
+    backButton.on("pointerdown", () => this.scene.start("MenuScene"));
+
+    this.input.keyboard.on("keydown-ESC", () => this.scene.start("MenuScene"));
+    this.input.keyboard.on("keydown-SPACE", () => this.scene.start("GameScene"));
+    this.input.keyboard.on("keydown-ENTER", () => this.scene.start("GameScene"));
   }
 }
 
@@ -403,7 +499,6 @@ class GameScene extends Phaser.Scene {
     });
 
     this.pauseButton = makeRoundButton(this, GAME_WIDTH - 70, 64, "II");
-    this.pauseButton.on("pointerdown", () => this.togglePause());
 
     this.quipText = this.add
       .text(GAME_WIDTH / 2, 104, "", {
@@ -428,6 +523,21 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-ESC", () => this.togglePause());
 
     this.input.on("pointerdown", (pointer) => {
+      if (this.isGameOver) {
+        this.handleGameOverPointer(pointer);
+        return;
+      }
+
+      if (this.isPaused) {
+        this.handlePausePointer(pointer);
+        return;
+      }
+
+      if (isWithinRoundButton(pointer, GAME_WIDTH - 70, 64)) {
+        this.togglePause();
+        return;
+      }
+
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
       this.touchSwipeHandled = false;
@@ -437,6 +547,10 @@ class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (pointer) => {
+      if (this.isPaused || this.isGameOver) {
+        return;
+      }
+
       if (!pointer.isDown || pointer.id !== this.activeTouchPointerId) {
         return;
       }
@@ -459,6 +573,10 @@ class GameScene extends Phaser.Scene {
     });
 
     this.input.on("pointerup", (pointer) => {
+      if (this.isPaused || this.isGameOver) {
+        return;
+      }
+
       if (pointer.id !== this.activeTouchPointerId) {
         return;
       }
@@ -486,6 +604,33 @@ class GameScene extends Phaser.Scene {
     this.touchDriftDirection = 0;
     this.touchDriftActive = false;
     this.activeTouchPointerId = null;
+  }
+
+  handlePausePointer(pointer) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 348, "WEITER")) {
+      this.resumeGame();
+      return;
+    }
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 438, "BEENDEN")) {
+      this.exitToMenu();
+    }
+  }
+
+  handleGameOverPointer(pointer) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 464, "NOCHMAL")) {
+      this.scene.restart();
+      return;
+    }
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2 - 150, 542, "HIGHSCORE")) {
+      this.scene.start("HighscoreScene");
+      return;
+    }
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2 + 170, 542, "MENUE")) {
+      this.scene.start("MenuScene");
+    }
   }
 
   update(_, delta) {
@@ -677,15 +822,14 @@ class GameScene extends Phaser.Scene {
         prompt: "TAUCH!",
       },
       {
-        key: "toothbrush",
+        key: "cupBrush",
         y: WATERLINE - 105,
-        scale: 0.5,
+        scale: 0.33,
         speedBoost: 16,
-        body: [128, 118, 106, 48],
+        body: [132, 126, 150, 188],
         gap: 800,
         mode: "dive",
         prompt: "TAUCH!",
-        visual: "cupbrush",
         labelOffset: 124,
       },
       {
@@ -729,7 +873,7 @@ class GameScene extends Phaser.Scene {
     obstacle.setData("prompt", pick.prompt);
     obstacle.setData("labelOffset", pick.labelOffset ?? (pick.mode === "dive" ? 74 : 88));
 
-    if (pick.visual === "cupbrush") {
+    if (pick.key === "cupBrush") {
       this.decorateCupBrush(obstacle);
     } else if (pick.visual === "foamgate") {
       this.decorateFoamGate(obstacle);
@@ -755,31 +899,11 @@ class GameScene extends Phaser.Scene {
   }
 
   decorateCupBrush(obstacle) {
-    obstacle.setAlpha(0.001);
     const container = this.add.container(obstacle.x, obstacle.y);
-    container.setDepth(7);
+    container.setDepth(6);
     container.setData("cleanup", true);
-
-    const cupBack = this.add.graphics();
-    cupBack.fillStyle(0x19bdd1, 0.9);
-    cupBack.fillRoundedRect(-64, -16, 128, 86, 18);
-    cupBack.lineStyle(4, 0xeaffff, 0.58);
-    cupBack.strokeRoundedRect(-64, -16, 128, 86, 18);
-
-    const water = this.add.ellipse(0, -15, 124, 28, 0x9df6ff, 0.58);
-    water.setStrokeStyle(3, 0xffffff, 0.38);
-
-    const brush = this.add.image(3, -72, "toothbrush").setScale(0.35).setAngle(-70);
-    const cupFront = this.add.graphics();
-    cupFront.fillStyle(0x0f9db3, 0.84);
-    cupFront.fillRoundedRect(-61, 8, 122, 64, 16);
-    cupFront.lineStyle(3, 0x71f1ff, 0.4);
-    cupFront.strokeRoundedRect(-61, 8, 122, 64, 16);
-
-    const shine = this.add.rectangle(-34, 34, 11, 46, 0xffffff, 0.22).setAngle(10);
-    const wake = this.add.ellipse(0, 74, 154, 28, 0x71f1ff, 0.24);
-
-    container.add([wake, cupBack, brush, water, cupFront, shine]);
+    const wake = this.add.ellipse(0, 112, 170, 28, 0x71f1ff, 0.24);
+    container.add(wake);
     obstacle.setData("visual", container);
   }
 
@@ -923,9 +1047,9 @@ class GameScene extends Phaser.Scene {
     this.nextPowerUpAt = this.time.now + 6800;
     const options = [
       { type: "bomb", key: "quackBomb", label: "BOMBE", icon: "!", color: "#ffd43f", ring: 0xffd43f, scale: 0.78, tint: null },
-      { type: "magnet", key: "pearlGold", label: "MAGNET", icon: "M", color: "#ffd43f", ring: 0xff70ad, scale: 0.72, tint: 0xff70ad },
-      { type: "shield", key: "pearlBlue", label: "SCHILD", icon: "S", color: "#9df6ff", ring: 0x9df6ff, scale: 0.72, tint: 0x9df6ff },
-      { type: "turbo", key: "pearlPink", label: "TURBO", icon: "T", color: "#ff70ad", ring: 0xff70ad, scale: 0.72, tint: 0xff70ad },
+      { type: "magnet", key: "powerupMagnet", label: "MAGNET", icon: "", color: "#ffd43f", ring: 0xff70ad, scale: 0.23, tint: null },
+      { type: "shield", key: "powerupShield", label: "SCHILD", icon: "", color: "#9df6ff", ring: 0x9df6ff, scale: 0.24, tint: null },
+      { type: "turbo", key: "powerupTurbo", label: "TURBO", icon: "", color: "#ff70ad", ring: 0xff70ad, scale: 0.25, tint: null },
     ];
     const config = Phaser.Utils.Array.GetRandom(this.runTime < 32 ? options.slice(0, 3) : options);
     const powerUp = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), config.key);
@@ -979,8 +1103,11 @@ class GameScene extends Phaser.Scene {
     visual.setData("cleanup", true);
     const ring = this.add.circle(0, 0, 48, config.ring, 0.12);
     ring.setStrokeStyle(5, config.ring, 0.72);
-    const badge = this.add.text(0, 1, config.icon, hudTextStyle(24, config.color)).setOrigin(0.5);
-    visual.add([ring, badge]);
+    const children = [ring];
+    if (config.icon) {
+      children.push(this.add.text(0, 1, config.icon, hudTextStyle(24, config.color)).setOrigin(0.5));
+    }
+    visual.add(children);
     powerUp.setData("visual", visual);
     powerUp.setData("ring", ring);
     this.tweens.add({
@@ -1254,9 +1381,20 @@ class GameScene extends Phaser.Scene {
   saveAndShowGameOver() {
     const finalScore = Math.floor(this.score);
     const isNewHighscore = finalScore > this.stats.highscore;
+    const scores = [
+      ...this.stats.scores,
+      {
+        score: finalScore,
+        pearls: this.pearls,
+        date: new Date().toISOString(),
+      },
+    ]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
     const nextStats = {
-      highscore: Math.max(this.stats.highscore, finalScore),
+      highscore: Math.max(this.stats.highscore, finalScore, scores[0]?.score ?? 0),
       games: this.stats.games + 1,
+      scores,
     };
     writeStats(nextStats);
 
@@ -1310,9 +1448,17 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const again = makeButton(this, GAME_WIDTH / 2, 492, "NOCHMAL DASHEN");
+    const again = makeButton(this, GAME_WIDTH / 2, 464, "NOCHMAL");
     again.setDepth(32);
     again.on("pointerdown", () => this.scene.restart());
+
+    const highscore = makeButton(this, GAME_WIDTH / 2 - 150, 542, "HIGHSCORE");
+    highscore.setDepth(32);
+    highscore.on("pointerdown", () => this.scene.start("HighscoreScene"));
+
+    const menu = makeButton(this, GAME_WIDTH / 2 + 170, 542, "MENUE");
+    menu.setDepth(32);
+    menu.on("pointerdown", () => this.scene.start("MenuScene"));
   }
 
   togglePause() {
@@ -1323,11 +1469,61 @@ class GameScene extends Phaser.Scene {
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
       this.physics.pause();
-      this.pauseLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "PAUSE", titleStyle(74, "#ffd43f")).setOrigin(0.5).setDepth(40);
+      this.showPauseOverlay();
     } else {
-      this.physics.resume();
-      this.pauseLabel?.destroy();
+      this.resumeGame();
     }
+  }
+
+  showPauseOverlay() {
+    this.resetTouchDrift();
+    this.destroyPauseOverlay();
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, 0.56);
+    shade.setDepth(40);
+
+    const card = this.add.graphics();
+    card.setDepth(41);
+    card.fillStyle(0x0a3a5d, 0.94);
+    card.fillRoundedRect(398, 174, 484, 348, 24);
+    card.lineStyle(4, 0x69e8ff, 0.55);
+    card.strokeRoundedRect(398, 174, 484, 348, 24);
+
+    const title = this.add.text(GAME_WIDTH / 2, 254, "PAUSE", titleStyle(64, "#ffd43f")).setOrigin(0.5).setDepth(42);
+    const resume = makeButton(this, GAME_WIDTH / 2, 348, "WEITER");
+    resume.setDepth(43);
+    resume.on("pointerdown", () => this.resumeGame());
+    const exit = makeButton(this, GAME_WIDTH / 2, 438, "BEENDEN");
+    exit.setDepth(43);
+    exit.on("pointerdown", () => this.exitToMenu());
+
+    this.pauseOverlay = [shade, card, title, resume, exit];
+  }
+
+  resumeGame() {
+    if (this.isGameOver) {
+      return;
+    }
+
+    this.resetTouchDrift();
+    this.isPaused = false;
+    this.destroyPauseOverlay();
+    this.physics.resume();
+  }
+
+  destroyPauseOverlay() {
+    if (!Array.isArray(this.pauseOverlay)) {
+      this.pauseOverlay = null;
+      return;
+    }
+
+    this.pauseOverlay.forEach((element) => element?.destroy());
+    this.pauseOverlay = null;
+  }
+
+  exitToMenu() {
+    this.resetTouchDrift();
+    this.isPaused = false;
+    this.scene.start("MenuScene");
   }
 
   splash(x, y) {
@@ -1859,6 +2055,15 @@ function makeButton(scene, x, y, label) {
   return container;
 }
 
+function isWithinButton(pointer, x, y, label) {
+  const width = Math.max(236, label.length * 19);
+  return Math.abs(pointer.x - x) <= width / 2 && Math.abs(pointer.y - y) <= 34;
+}
+
+function isWithinRoundButton(pointer, x, y) {
+  return Math.abs(pointer.x - x) <= 42 && Math.abs(pointer.y - y) <= 42;
+}
+
 function makeRoundButton(scene, x, y, label) {
   const container = scene.add.container(x, y);
   const bg = scene.add.graphics();
@@ -1899,18 +2104,43 @@ function titleStyle(size, color) {
 
 function readStats() {
   try {
-    return { highscore: 0, games: 0, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
+    return normalizeStats(JSON.parse(localStorage.getItem(STORAGE_KEY)));
   } catch {
-    return { highscore: 0, games: 0 };
+    return normalizeStats(null);
   }
 }
 
 function writeStats(stats) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeStats(stats)));
   } catch {
     // Highscore persistence is optional; game-over UI must still render.
   }
+}
+
+function normalizeStats(raw) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const games = Math.max(0, Math.floor(Number(source.games) || 0));
+  let scores = Array.isArray(source.scores)
+    ? source.scores
+        .map((entry) => ({
+          score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
+          pearls: Math.max(0, Math.floor(Number(entry?.pearls) || 0)),
+          date: typeof entry?.date === "string" ? entry.date : "",
+        }))
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+    : [];
+  const storedHighscore = Math.max(0, Math.floor(Number(source.highscore) || 0));
+  if (scores.length === 0 && storedHighscore > 0) {
+    scores = [{ score: storedHighscore, pearls: 0, date: "" }];
+  }
+  return {
+    highscore: Math.max(storedHighscore, scores[0]?.score ?? 0),
+    games,
+    scores,
+  };
 }
 
 const config = {
@@ -1935,7 +2165,7 @@ const config = {
     pixelArt: false,
     roundPixels: false,
   },
-  scene: [BootScene, MenuScene, GameScene],
+  scene: [BootScene, MenuScene, HighscoreScene, GameScene],
 };
 
 window.addEventListener("load", () => {
