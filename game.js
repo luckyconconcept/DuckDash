@@ -377,6 +377,10 @@ class GameScene extends Phaser.Scene {
     this.spawnDelay = 1700;
     this.collectDelay = 980;
     this.lastGroundedAt = 0;
+    this.wasGrounded = true;
+    this.lastAirVelocityY = 0;
+    this.lastImpactSplashAt = 0;
+    this.suppressLandingSplashUntil = 0;
     this.jumpQueuedUntil = 0;
     this.isGameOver = false;
     this.isPaused = false;
@@ -412,6 +416,7 @@ class GameScene extends Phaser.Scene {
     addBackground(this);
     addWaterOverlay(this);
     this.createWorld();
+    this.suppressLandingSplashUntil = this.time.now + 650;
     this.createHud();
     this.createControls();
 
@@ -651,11 +656,21 @@ class GameScene extends Phaser.Scene {
     this.runTime += deltaSeconds;
     this.score += deltaSeconds * 12;
     this.speed = 300 + Math.min(280, this.runTime * 6) + (this.isTurboActive() ? 65 : 0);
-    if (this.duck.body.blocked.down) {
+    const isGrounded = this.duck.body.blocked.down;
+    if (!isGrounded) {
+      this.lastAirVelocityY = this.duck.body.velocity.y;
+    }
+
+    if (isGrounded && !this.wasGrounded) {
+      this.waterImpactSplash(this.duck.x - 12, this.duck.y + 50, this.lastAirVelocityY);
+    }
+    this.wasGrounded = isGrounded;
+
+    if (isGrounded) {
       this.lastGroundedAt = this.time.now;
     }
 
-    if (this.duck.body.blocked.down && this.time.now < this.jumpQueuedUntil) {
+    if (isGrounded && this.time.now < this.jumpQueuedUntil) {
       this.performJump();
     }
 
@@ -1538,6 +1553,49 @@ class GameScene extends Phaser.Scene {
 
   splash(x, y) {
     this.splashEmitter.emitParticleAt(x, y, 16);
+  }
+
+  waterImpactSplash(x, y, fallVelocity = 0) {
+    if (this.time.now < this.suppressLandingSplashUntil || this.time.now < this.lastImpactSplashAt + 140) {
+      return;
+    }
+
+    this.lastImpactSplashAt = this.time.now;
+    const intensity = Phaser.Math.Clamp(Math.abs(fallVelocity) / 520, 0.75, 1.55);
+    this.splashEmitter.emitParticleAt(x, y, Math.round(24 * intensity));
+
+    const wake = this.add.ellipse(x + 6, y + 16, 68, 16);
+    wake.setDepth(7);
+    wake.setStrokeStyle(4, 0xeaffff, 0.72);
+    this.tweens.add({
+      targets: wake,
+      scaleX: 2.25,
+      scaleY: 1.45,
+      alpha: 0,
+      duration: 360,
+      ease: "Cubic.out",
+      onComplete: () => wake.destroy(),
+    });
+
+    const count = Math.round(10 + intensity * 8);
+    for (let index = 0; index < count; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const droplet = this.add
+        .image(x + Phaser.Math.Between(-18, 18), y + Phaser.Math.Between(-4, 10), "pearlBlue")
+        .setScale(Phaser.Math.FloatBetween(0.055, 0.105))
+        .setAlpha(0.68)
+        .setDepth(10);
+      this.tweens.add({
+        targets: droplet,
+        x: droplet.x + side * Phaser.Math.Between(44, Math.round(105 * intensity)),
+        y: droplet.y - Phaser.Math.Between(36, Math.round(95 * intensity)),
+        alpha: 0,
+        scale: 0,
+        duration: Phaser.Math.Between(320, 560),
+        ease: "Cubic.out",
+        onComplete: () => droplet.destroy(),
+      });
+    }
   }
 
   showDiveWake() {
