@@ -10,6 +10,15 @@ Diese Namen sind die verbindlichen Asset-Dateinamen im Spiel. Wenn Assets neu fr
 | `logo` | `assets/logo.png` | Startscreen-Logo |
 | `duck` | `assets/duck.png` | Spielfigur |
 
+## Gesperrte visuelle Baseline
+
+Stand `20260622-waterdynamic10`: Entenhoehe, Wasserkante und Wasseranimation sind freigegeben und bleiben unveraendert, solange keine explizite neue Anweisung kommt.
+
+- Wasserkante im Code: `WATER_SURFACE_Y = 456`
+- Enten-Wasserlinie im Code: `DUCK_WATERLINE = 476`
+- Wasseranimation: aktuelle Kombination aus `addAnimatedWaterSurface`, `addSurfaceFoamFlecks`, `addSurfaceShimmer`, `addBathtubRunoff` und `addWaterGlints`
+- Keine Anpassung von Wellenhoehe, Foam-Flecks, Shimmer, Runoff oder Duck-Float bei unrelated Gameplay-/UI-Arbeit.
+
 ## Hindernisse
 
 | Spiel-Key | Datei | Einsatz |
