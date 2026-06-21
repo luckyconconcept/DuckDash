@@ -2088,11 +2088,116 @@ function addBackground(scene) {
 }
 
 function addWaterOverlay(scene) {
-  const wave = scene.add.graphics();
-  wave.fillStyle(0x20c7e8, 0.32);
-  wave.fillRect(0, WATERLINE - 10, GAME_WIDTH, GAME_HEIGHT - WATERLINE + 10);
-  wave.lineStyle(3, 0xa4fbff, 0.28);
-  wave.lineBetween(0, WATERLINE - 8, GAME_WIDTH, WATERLINE - 8);
+  const baseDepth = 1;
+  const water = scene.add.graphics();
+  water.setDepth(baseDepth);
+  water.fillGradientStyle(0x27d4ee, 0x27d4ee, 0x0aa8d7, 0x0877b8, 0.28, 0.28, 0.42, 0.46);
+  water.fillRect(0, WATERLINE - 18, GAME_WIDTH, GAME_HEIGHT - WATERLINE + 18);
+
+  const deepCurrent = drawWaterCurrent(scene, WATERLINE + 46, 0x7cfaff, 0.18, 7, 142, 5);
+  deepCurrent.setDepth(baseDepth + 0.1);
+  scene.tweens.add({
+    targets: deepCurrent,
+    x: -220,
+    duration: 7600,
+    repeat: -1,
+    ease: "Linear",
+  });
+
+  const nearCurrent = drawWaterCurrent(scene, WATERLINE + 108, 0xd8ffff, 0.14, 9, 184, 4);
+  nearCurrent.setDepth(baseDepth + 0.15);
+  scene.tweens.add({
+    targets: nearCurrent,
+    x: -280,
+    duration: 9800,
+    repeat: -1,
+    ease: "Linear",
+  });
+
+  const surface = drawWaterSurface(scene, 0xa4fbff, 0.32, 0);
+  surface.setDepth(baseDepth + 0.3);
+  scene.tweens.add({
+    targets: surface,
+    x: -160,
+    duration: 4300,
+    repeat: -1,
+    ease: "Linear",
+  });
+
+  const surfaceFoam = drawWaterSurface(scene, 0xffffff, 0.22, 18);
+  surfaceFoam.setDepth(baseDepth + 0.31);
+  scene.tweens.add({
+    targets: surfaceFoam,
+    x: 140,
+    duration: 5200,
+    repeat: -1,
+    ease: "Linear",
+  });
+
+  addWaterGlints(scene, baseDepth + 0.2);
+}
+
+function drawWaterCurrent(scene, y, color, alpha, amplitude, wavelength, lanes) {
+  const graphic = scene.add.graphics();
+  const width = GAME_WIDTH + 560;
+  graphic.x = -140;
+  graphic.lineStyle(2, color, alpha);
+
+  for (let lane = 0; lane < lanes; lane += 1) {
+    const laneY = y + lane * 24;
+    graphic.beginPath();
+    graphic.moveTo(0, laneY);
+    for (let x = 0; x <= width; x += 18) {
+      const offset = Math.sin(x / wavelength + lane * 1.35) * amplitude;
+      graphic.lineTo(x, laneY + offset);
+    }
+    graphic.strokePath();
+  }
+
+  return graphic;
+}
+
+function drawWaterSurface(scene, color, alpha, phase) {
+  const graphic = scene.add.graphics();
+  const width = GAME_WIDTH + 360;
+  graphic.x = -180;
+  graphic.lineStyle(3, color, alpha);
+  graphic.beginPath();
+  graphic.moveTo(0, WATERLINE - 8);
+
+  for (let x = 0; x <= width; x += 14) {
+    const y = WATERLINE - 8 + Math.sin((x + phase) / 42) * 4 + Math.sin((x + phase) / 105) * 2;
+    graphic.lineTo(x, y);
+  }
+
+  graphic.strokePath();
+  return graphic;
+}
+
+function addWaterGlints(scene, depth) {
+  for (let index = 0; index < 14; index += 1) {
+    const glint = scene.add.ellipse(
+      Phaser.Math.Between(20, GAME_WIDTH - 20),
+      Phaser.Math.Between(WATERLINE + 28, GAME_HEIGHT - 26),
+      Phaser.Math.Between(42, 98),
+      Phaser.Math.Between(4, 9),
+      0xeaffff,
+      Phaser.Math.FloatBetween(0.1, 0.22),
+    );
+    glint.setDepth(depth);
+    glint.setAngle(Phaser.Math.Between(-8, 8));
+
+    scene.tweens.add({
+      targets: glint,
+      x: glint.x - Phaser.Math.Between(120, 260),
+      alpha: Phaser.Math.FloatBetween(0.04, 0.16),
+      duration: Phaser.Math.Between(3600, 6400),
+      delay: Phaser.Math.Between(0, 2200),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  }
 }
 
 function makeButton(scene, x, y, label) {
