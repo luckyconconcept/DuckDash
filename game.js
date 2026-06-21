@@ -7,8 +7,8 @@ const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
 const DIVE_RECOVERY_DURATION = 260;
 const DUCK_HOME_X = 220;
-const DUCK_MIN_X = 160;
-const DUCK_MAX_X = 320;
+const DUCK_MIN_X = 96;
+const DUCK_MAX_X = 420;
 
 const QUIPS = [
   "QUAK!",
@@ -244,6 +244,11 @@ class GameScene extends Phaser.Scene {
     this.diveStartedAt = 0;
     this.diveHeld = false;
     this.diveRecoverUntil = 0;
+    this.lastDiveBubbleAt = 0;
+    this.diveWake = null;
+    this.shieldCharges = 0;
+    this.magnetUntil = 0;
+    this.turboUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
@@ -443,7 +448,7 @@ class GameScene extends Phaser.Scene {
     const deltaSeconds = delta / 1000;
     this.runTime += deltaSeconds;
     this.score += deltaSeconds * 12;
-    this.speed = 300 + Math.min(280, this.runTime * 6);
+    this.speed = 300 + Math.min(280, this.runTime * 6) + (this.isTurboActive() ? 65 : 0);
     if (this.duck.body.blocked.down) {
       this.lastGroundedAt = this.time.now;
     }
@@ -455,13 +460,16 @@ class GameScene extends Phaser.Scene {
     this.spawnObstacleEvent.delay = this.getObstacleDelay();
 
     this.updateHud();
+    this.updatePowerUpState();
     this.updateDiveState();
+    this.syncDiveVisual();
     if (!this.isDiving && this.time.now > this.diveRecoverUntil) {
       this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
     }
     this.pullNearbyCollectibles();
     this.updateHorizontalControl(deltaSeconds);
     this.updateObstacleLabels();
+    this.updatePowerUpLabels();
     this.rewardPassedJumpObstacles();
 
     if (this.score >= this.lastMilestone + 500) {
@@ -517,10 +525,12 @@ class GameScene extends Phaser.Scene {
     SoundFX.unlock();
     SoundFX.dive();
     this.duck.setVelocityY(520);
-    this.duck.setAngle(12);
-    this.duck.setAlpha(1);
+    this.duck.setAngle(18);
+    this.duck.setAlpha(0.72);
+    this.duck.setTint(0x6ff4ff);
     this.duck.body.setSize(108, 52);
     this.duck.body.setOffset(66, 132);
+    this.showDiveWake();
     this.splash(this.duck.x - 38, this.duck.y + 48);
   }
 
@@ -552,6 +562,18 @@ class GameScene extends Phaser.Scene {
         prompt: "DRUEBER!",
       },
       {
+        key: "soap",
+        y: WATERLINE - 38,
+        scale: 0.76,
+        speedBoost: 14,
+        body: [150, 52, 58, 60],
+        gap: 740,
+        mode: "jump",
+        prompt: "WEIT DRUEBER!",
+        visual: "soapstack",
+        labelOffset: 118,
+      },
+      {
         key: "toothbrush",
         y: WATERLINE - 134,
         scale: 0.5,
@@ -574,6 +596,18 @@ class GameScene extends Phaser.Scene {
         labelOffset: 124,
       },
       {
+        key: "pearlBlue",
+        y: WATERLINE - 118,
+        scale: 0.18,
+        speedBoost: 12,
+        body: [124, 178, -6, -16],
+        gap: 820,
+        mode: "dive",
+        prompt: "TIEF TAUCHEN!",
+        visual: "foamgate",
+        labelOffset: 132,
+      },
+      {
         key: "whirlpool",
         y: WATERLINE - 18,
         scale: 0.54,
@@ -584,7 +618,7 @@ class GameScene extends Phaser.Scene {
         prompt: "DRAUF!",
       },
     ];
-    const allowed = this.runTime < 18 ? options.slice(0, 2) : this.runTime < 38 ? options.slice(0, 3) : options;
+    const allowed = this.runTime < 18 ? options.slice(0, 3) : this.runTime < 38 ? options.slice(0, 5) : options;
     const pick = this.getNextObstacle(allowed);
     if (!this.hasObstacleGap(pick.gap)) {
       return;
@@ -604,6 +638,10 @@ class GameScene extends Phaser.Scene {
 
     if (pick.visual === "cupbrush") {
       this.decorateCupBrush(obstacle);
+    } else if (pick.visual === "foamgate") {
+      this.decorateFoamGate(obstacle);
+    } else if (pick.visual === "soapstack") {
+      this.decorateSoapStack(obstacle);
     }
 
     const label = this.add.text(obstacle.x, obstacle.y - obstacle.getData("labelOffset"), pick.prompt, hudTextStyle(20, pick.mode === "dive" ? "#9df6ff" : "#ffd43f"));
@@ -649,6 +687,41 @@ class GameScene extends Phaser.Scene {
     const wake = this.add.ellipse(0, 74, 154, 28, 0x71f1ff, 0.24);
 
     container.add([wake, cupBack, brush, water, cupFront, shine]);
+    obstacle.setData("visual", container);
+  }
+
+  decorateFoamGate(obstacle) {
+    obstacle.setAlpha(0.001);
+    const container = this.add.container(obstacle.x, obstacle.y);
+    container.setDepth(7);
+    container.setData("cleanup", true);
+
+    const wake = this.add.ellipse(0, 78, 176, 32, 0x71f1ff, 0.2);
+    const bubbles = [];
+    for (let index = 0; index < 8; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const bubble = this.add
+        .image(side * Phaser.Math.Between(22, 54), -72 + index * 22, "pearlBlue")
+        .setScale(0.12 + (index % 3) * 0.035)
+        .setAlpha(0.72);
+      bubbles.push(bubble);
+    }
+
+    const cap = this.add.ellipse(0, -88, 130, 32, 0xeaffff, 0.26);
+    const base = this.add.ellipse(0, 72, 164, 28, 0xeaffff, 0.2);
+    container.add([wake, base, ...bubbles, cap]);
+    obstacle.setData("visual", container);
+  }
+
+  decorateSoapStack(obstacle) {
+    const container = this.add.container(obstacle.x, obstacle.y);
+    container.setDepth(7);
+    container.setData("cleanup", true);
+    const wake = this.add.ellipse(0, 46, 178, 28, 0x71f1ff, 0.2);
+    const back = this.add.image(-18, -18, "soap").setScale(0.58).setAngle(-7).setAlpha(0.82);
+    const front = this.add.image(18, 6, "soap").setScale(0.62).setAngle(5);
+    container.add([wake, back, front]);
+    obstacle.setAlpha(0.001);
     obstacle.setData("visual", container);
   }
 
@@ -744,16 +817,32 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    const bomb = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), "quackBomb");
-    bomb.setScale(0.78);
-    bomb.body.setCircle(48);
-    bomb.setVelocityX(-this.speed * 0.82);
-    bomb.setDepth(6);
-    bomb.setData("cleanup", true);
+    const options = [
+      { type: "bomb", key: "quackBomb", label: "BOMBE", color: "#ffd43f", scale: 0.78, tint: null },
+      { type: "magnet", key: "pearlGold", label: "MAGNET", color: "#ffd43f", scale: 0.72, tint: 0xff70ad },
+      { type: "shield", key: "pearlBlue", label: "SCHILD", color: "#9df6ff", scale: 0.72, tint: 0x9df6ff },
+      { type: "turbo", key: "pearlPink", label: "TURBO", color: "#ff70ad", scale: 0.72, tint: 0xff70ad },
+    ];
+    const config = Phaser.Utils.Array.GetRandom(this.runTime < 32 ? options.slice(0, 3) : options);
+    const powerUp = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), config.key);
+    powerUp.setScale(config.scale);
+    powerUp.body.setCircle(48);
+    powerUp.setVelocityX(-this.speed * 0.82);
+    powerUp.setDepth(6);
+    powerUp.setData("cleanup", true);
+    powerUp.setData("type", config.type);
+    powerUp.setData("labelOffset", 76);
+    if (config.tint) {
+      powerUp.setTint(config.tint);
+    }
+
+    const label = this.add.text(powerUp.x, powerUp.y - 76, config.label, hudTextStyle(18, config.color)).setOrigin(0.5).setDepth(9);
+    label.setData("cleanup", true);
+    powerUp.setData("label", label);
 
     this.tweens.add({
-      targets: bomb,
-      y: bomb.y - 18,
+      targets: powerUp,
+      y: powerUp.y - 18,
       angle: 10,
       yoyo: true,
       repeat: -1,
@@ -796,9 +885,55 @@ class GameScene extends Phaser.Scene {
   }
 
   collectPowerUp(_, powerUp) {
+    const type = powerUp.getData("type") || "bomb";
+    powerUp.getData("label")?.destroy();
     powerUp.destroy();
+
+    if (type === "magnet") {
+      this.activateMagnet();
+      return;
+    }
+
+    if (type === "shield") {
+      this.activateShield();
+      return;
+    }
+
+    if (type === "turbo") {
+      this.activateTurbo();
+      return;
+    }
+
     SoundFX.bomb();
     this.activateQuackBomb();
+  }
+
+  activateMagnet() {
+    this.magnetUntil = this.time.now + 9000;
+    this.score += 20;
+    SoundFX.success();
+    this.showFloatingText("MAGNET!", this.duck.x + 170, this.duck.y - 110, "#ffd43f");
+    this.burst(this.duck.x + 28, this.duck.y - 20, ["pearlGold", "pearlPink", "pearlBlue"], 24, 0.12, 180);
+  }
+
+  activateShield() {
+    this.shieldCharges = Math.min(2, this.shieldCharges + 1);
+    this.score += 25;
+    SoundFX.success();
+    this.duck.setTint(0x9df6ff);
+    this.showFloatingText("SCHAUMSCHILD!", this.duck.x + 180, this.duck.y - 118, "#9df6ff");
+    this.burst(this.duck.x + 20, this.duck.y, ["pearlBlue"], 22, 0.12, 150);
+  }
+
+  activateTurbo() {
+    this.turboUntil = this.time.now + 4800;
+    this.invulnerableUntil = Math.max(this.invulnerableUntil, this.turboUntil);
+    this.score += 30;
+    SoundFX.success();
+    this.duck.setTint(0xfff08a);
+    this.showFloatingText("TURBO-BLASE!", this.duck.x + 185, this.duck.y - 120, "#ff70ad");
+    this.cameras.main.shake(90, 0.003);
+    this.burst(this.duck.x + 30, this.duck.y - 6, ["pearlGold", "pearlPink"], 26, 0.13, 180);
   }
 
   activateQuackBomb() {
@@ -862,6 +997,16 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (this.isTurboActive()) {
+      this.burstThroughObstacle(obstacle);
+      return;
+    }
+
+    if (this.shieldCharges > 0) {
+      this.absorbHit(obstacle);
+      return;
+    }
+
     this.lives -= 1;
     this.combo = 0;
     this.comboText.setText("");
@@ -909,6 +1054,54 @@ class GameScene extends Phaser.Scene {
     this.duck.setTint(0xff6f59);
     this.duck.setAngle(-22);
     this.saveAndShowGameOver();
+  }
+
+  burstThroughObstacle(obstacle) {
+    if (!obstacle?.active) {
+      return;
+    }
+
+    this.score += 30;
+    this.addCombo(3, "TURBO DURCH!", obstacle.x, obstacle.y - 90, "#ff70ad");
+    SoundFX.success();
+    obstacle.body.enable = false;
+    this.destroyObstacleVisuals(obstacle);
+    obstacle.getData("label")?.destroy();
+    this.burst(obstacle.x, obstacle.y, ["pearlPink", "pearlGold"], 22, 0.12, 160);
+    this.tweens.add({
+      targets: obstacle,
+      x: obstacle.x + 180,
+      alpha: 0,
+      scale: obstacle.scale * 1.3,
+      duration: 220,
+      ease: "Cubic.out",
+      onComplete: () => obstacle.destroy(),
+    });
+  }
+
+  absorbHit(obstacle) {
+    this.shieldCharges -= 1;
+    this.score += 20;
+    this.addCombo(2, "SCHILD HAELT!", this.duck.x + 160, this.duck.y - 95, "#9df6ff");
+    SoundFX.success();
+    this.cameras.main.shake(90, 0.004);
+    this.burst(this.duck.x + 28, this.duck.y - 8, ["pearlBlue"], 26, 0.13, 170);
+
+    if (obstacle?.active) {
+      obstacle.body.enable = false;
+      this.destroyObstacleVisuals(obstacle);
+      obstacle.getData("label")?.destroy();
+      this.tweens.add({
+        targets: obstacle,
+        x: obstacle.x + 150,
+        y: obstacle.y - 60,
+        angle: obstacle.angle + 28,
+        alpha: 0,
+        duration: 240,
+        ease: "Back.in",
+        onComplete: () => obstacle.destroy(),
+      });
+    }
   }
 
   saveAndShowGameOver() {
@@ -994,6 +1187,45 @@ class GameScene extends Phaser.Scene {
     this.splashEmitter.emitParticleAt(x, y, 16);
   }
 
+  showDiveWake() {
+    this.diveWake?.destroy();
+    this.diveWake = this.add.ellipse(this.duck.x + 24, this.duck.y + 42, 172, 54, 0x6ff4ff, 0.28);
+    this.diveWake.setDepth(7);
+    this.diveWake.setStrokeStyle(3, 0xeaffff, 0.45);
+  }
+
+  syncDiveVisual() {
+    if (!this.isDiving) {
+      return;
+    }
+
+    this.diveWake?.setPosition(this.duck.x + 28, this.duck.y + 42);
+    this.emitDiveBubble();
+  }
+
+  emitDiveBubble() {
+    if (this.time.now < this.lastDiveBubbleAt + 78) {
+      return;
+    }
+
+    this.lastDiveBubbleAt = this.time.now;
+    const bubble = this.add
+      .image(this.duck.x + Phaser.Math.Between(14, 68), this.duck.y + Phaser.Math.Between(18, 58), "pearlBlue")
+      .setScale(0.08)
+      .setAlpha(0.46)
+      .setDepth(9);
+    this.tweens.add({
+      targets: bubble,
+      x: bubble.x + Phaser.Math.Between(8, 32),
+      y: bubble.y - Phaser.Math.Between(24, 58),
+      alpha: 0,
+      scale: 0,
+      duration: 420,
+      ease: "Cubic.out",
+      onComplete: () => bubble.destroy(),
+    });
+  }
+
   burst(x, y, keys, count = 12, scale = 0.12, distance = 80, depth = 21) {
     for (let index = 0; index < count; index += 1) {
       const key = Phaser.Utils.Array.GetRandom(keys);
@@ -1020,8 +1252,42 @@ class GameScene extends Phaser.Scene {
     this.lifeBubbles.forEach((bubble, index) => {
       const alive = index < this.lives;
       bubble.setAlpha(alive ? 0.86 : 0.2);
-      bubble.setScale(alive ? 1 : 0.78);
+      bubble.setScale(alive ? (index < this.shieldCharges ? 1.18 : 1) : 0.78);
+      if (index < this.shieldCharges) {
+        bubble.setTint(0x9df6ff);
+      } else {
+        bubble.clearTint();
+      }
     });
+  }
+
+  updatePowerUpState() {
+    if (this.isTurboActive()) {
+      this.duck.setTint(0xfff08a);
+      return;
+    }
+
+    if (this.isDiving) {
+      this.duck.setTint(0x6ff4ff);
+      return;
+    }
+
+    if (this.shieldCharges > 0) {
+      this.duck.setTint(0x9df6ff);
+      return;
+    }
+
+    if (this.time.now >= this.invulnerableUntil) {
+      this.duck.clearTint();
+    }
+  }
+
+  isMagnetActive() {
+    return this.time.now < this.magnetUntil;
+  }
+
+  isTurboActive() {
+    return this.time.now < this.turboUntil;
   }
 
   setDuckNormalBody() {
@@ -1057,6 +1323,11 @@ class GameScene extends Phaser.Scene {
     this.duck.setVelocityY(-360);
     this.duck.setAngle(-10);
     this.duck.setAlpha(1);
+    if (this.time.now >= this.invulnerableUntil && !this.isTurboActive()) {
+      this.duck.clearTint();
+    }
+    this.diveWake?.destroy();
+    this.diveWake = null;
     this.splash(this.duck.x - 28, this.duck.y + 48);
     this.tweens.add({
       targets: this.duck,
@@ -1065,7 +1336,7 @@ class GameScene extends Phaser.Scene {
       ease: "Cubic.out",
     });
     this.time.delayedCall(210, () => {
-      if (!this.isGameOver && !this.isDiving && this.time.now >= this.invulnerableUntil) {
+      if (!this.isGameOver && !this.isDiving && this.shieldCharges === 0 && !this.isTurboActive() && this.time.now >= this.invulnerableUntil) {
         this.duck.clearTint();
       }
     });
@@ -1088,7 +1359,7 @@ class GameScene extends Phaser.Scene {
       targetX = DUCK_MAX_X;
     }
 
-    const desiredVelocity = Phaser.Math.Clamp((targetX - this.duck.x) * 7, -260, 260);
+    const desiredVelocity = Phaser.Math.Clamp((targetX - this.duck.x) * 8, -340, 340);
     this.duck.setVelocityX(desiredVelocity);
     this.duck.x = Phaser.Math.Clamp(this.duck.x, DUCK_MIN_X, DUCK_MAX_X);
 
@@ -1106,11 +1377,11 @@ class GameScene extends Phaser.Scene {
     }
 
     const offset = Math.abs(this.duck.x - DUCK_HOME_X);
-    if (offset > 74) {
-      return 8;
+    if (offset > 130) {
+      return 12;
     }
-    if (offset > 38) {
-      return 4;
+    if (offset > 65) {
+      return 6;
     }
     return 0;
   }
@@ -1191,6 +1462,18 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  updatePowerUpLabels() {
+    this.powerUps.getChildren().forEach((powerUp) => {
+      const label = powerUp.getData("label");
+      if (!label?.active) {
+        return;
+      }
+
+      label.setPosition(powerUp.x, powerUp.y - powerUp.getData("labelOffset"));
+      label.setAlpha(Phaser.Math.Clamp((powerUp.x - 210) / 260, 0, 1));
+    });
+  }
+
   passUnderObstacle(obstacle) {
     if (obstacle.getData("passed")) {
       return;
@@ -1253,6 +1536,11 @@ class GameScene extends Phaser.Scene {
   }
 
   pullNearbyCollectibles() {
+    const magnetActive = this.isMagnetActive();
+    const attractDistance = magnetActive ? 360 : 210;
+    const attractStrength = magnetActive ? 0.075 : 0.032;
+    const collectDistance = magnetActive ? 126 : 96;
+
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
         return;
@@ -1274,15 +1562,15 @@ class GameScene extends Phaser.Scene {
       }
 
       const distance = Phaser.Math.Distance.Between(this.duck.x, this.duck.y, pearl.x, pearl.y);
-      if (distance > 210) {
+      if (distance > attractDistance) {
         return;
       }
 
-      pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 28, 0.032);
-      pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 4, 0.032);
+      pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 28, attractStrength);
+      pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 4, attractStrength);
       pearl.setVelocityX(Math.min(pearl.body.velocity.x, -this.speed * 0.42));
 
-      if (distance < 96) {
+      if (distance < collectDistance) {
         this.collectPearl(this.duck, pearl);
       }
     });
