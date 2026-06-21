@@ -263,6 +263,7 @@ class GameScene extends Phaser.Scene {
     this.pearls = 0;
     this.lives = 3;
     this.combo = 0;
+    this.lastComboAt = 0;
     this.lastMilestone = 0;
     this.speed = 300;
     this.spawnDelay = 1700;
@@ -379,12 +380,17 @@ class GameScene extends Phaser.Scene {
       bubble.setDepth(9);
       return bubble;
     });
-    this.actionText = this.add.text(370, 38, "DRUEBER, DRAUF, DRIFTEN oder TAUCHEN", hudTextStyle(22, "#9df6ff"));
+    this.actionText = this.add.text(370, 38, "SPRINGEN | TAUCHEN | DRIFTEN", hudTextStyle(22, "#9df6ff"));
     this.comboText = this.add.text(GAME_WIDTH - 330, 118, "", hudTextStyle(26, "#ffd43f")).setOrigin(1, 0.5);
+    this.powerStatusTexts = {
+      shield: this.add.text(776, 34, "", hudTextStyle(18, "#9df6ff")).setOrigin(0, 0.5).setDepth(9),
+      magnet: this.add.text(912, 34, "", hudTextStyle(18, "#ffd43f")).setOrigin(0, 0.5).setDepth(9),
+      turbo: this.add.text(1052, 34, "", hudTextStyle(18, "#ff70ad")).setOrigin(0, 0.5).setDepth(9),
+    };
     this.tweens.add({
       targets: this.actionText,
-      alpha: 0,
-      delay: 5200,
+      alpha: 0.28,
+      delay: 6200,
       duration: 800,
       ease: "Sine.inOut",
     });
@@ -495,6 +501,7 @@ class GameScene extends Phaser.Scene {
     this.spawnObstacleEvent.delay = this.getObstacleDelay();
 
     this.updateHud();
+    this.expireCombo();
     this.updatePowerUpState();
     this.updateDiveState();
     this.syncDiveVisual();
@@ -518,6 +525,7 @@ class GameScene extends Phaser.Scene {
           this.destroyObstacleVisuals(child);
         }
         child.getData("label")?.destroy();
+        child.getData("visual")?.destroy();
         child.destroy();
       }
     });
@@ -854,10 +862,10 @@ class GameScene extends Phaser.Scene {
     }
 
     const options = [
-      { type: "bomb", key: "quackBomb", label: "BOMBE", color: "#ffd43f", scale: 0.78, tint: null },
-      { type: "magnet", key: "pearlGold", label: "MAGNET", color: "#ffd43f", scale: 0.72, tint: 0xff70ad },
-      { type: "shield", key: "pearlBlue", label: "SCHILD", color: "#9df6ff", scale: 0.72, tint: 0x9df6ff },
-      { type: "turbo", key: "pearlPink", label: "TURBO", color: "#ff70ad", scale: 0.72, tint: 0xff70ad },
+      { type: "bomb", key: "quackBomb", label: "BOMBE", icon: "!", color: "#ffd43f", ring: 0xffd43f, scale: 0.78, tint: null },
+      { type: "magnet", key: "pearlGold", label: "MAGNET", icon: "M", color: "#ffd43f", ring: 0xff70ad, scale: 0.72, tint: 0xff70ad },
+      { type: "shield", key: "pearlBlue", label: "SCHILD", icon: "S", color: "#9df6ff", ring: 0x9df6ff, scale: 0.72, tint: 0x9df6ff },
+      { type: "turbo", key: "pearlPink", label: "TURBO", icon: "T", color: "#ff70ad", ring: 0xff70ad, scale: 0.72, tint: 0xff70ad },
     ];
     const config = Phaser.Utils.Array.GetRandom(this.runTime < 32 ? options.slice(0, 3) : options);
     const powerUp = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), config.key);
@@ -875,6 +883,7 @@ class GameScene extends Phaser.Scene {
     const label = this.add.text(powerUp.x, powerUp.y - 76, config.label, hudTextStyle(18, config.color)).setOrigin(0.5).setDepth(9);
     label.setData("cleanup", true);
     powerUp.setData("label", label);
+    this.decoratePowerUp(powerUp, config);
 
     this.tweens.add({
       targets: powerUp,
@@ -883,6 +892,26 @@ class GameScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
       duration: 780,
+      ease: "Sine.inOut",
+    });
+  }
+
+  decoratePowerUp(powerUp, config) {
+    const visual = this.add.container(powerUp.x, powerUp.y);
+    visual.setDepth(5);
+    visual.setData("cleanup", true);
+    const ring = this.add.circle(0, 0, 48, config.ring, 0.12);
+    ring.setStrokeStyle(5, config.ring, 0.72);
+    const badge = this.add.text(0, 1, config.icon, hudTextStyle(24, config.color)).setOrigin(0.5);
+    visual.add([ring, badge]);
+    powerUp.setData("visual", visual);
+    this.tweens.add({
+      targets: ring,
+      scale: 1.18,
+      alpha: 0.5,
+      yoyo: true,
+      repeat: -1,
+      duration: 520,
       ease: "Sine.inOut",
     });
   }
@@ -923,6 +952,7 @@ class GameScene extends Phaser.Scene {
   collectPowerUp(_, powerUp) {
     const type = powerUp.getData("type") || "bomb";
     powerUp.getData("label")?.destroy();
+    powerUp.getData("visual")?.destroy();
     powerUp.destroy();
 
     if (type === "magnet") {
@@ -1309,6 +1339,24 @@ class GameScene extends Phaser.Scene {
         bubble.setFillStyle(0x9df6ff, 0.86);
       }
     });
+    this.updatePowerHud();
+  }
+
+  updatePowerHud() {
+    const magnetSeconds = Math.ceil(Math.max(0, this.magnetUntil - this.time.now) / 1000);
+    const turboSeconds = Math.ceil(Math.max(0, this.turboUntil - this.time.now) / 1000);
+    this.powerStatusTexts.shield.setText(this.shieldCharges > 0 ? `S x${this.shieldCharges}` : "");
+    this.powerStatusTexts.magnet.setText(magnetSeconds > 0 ? `M ${magnetSeconds}s` : "");
+    this.powerStatusTexts.turbo.setText(turboSeconds > 0 ? `T ${turboSeconds}s` : "");
+  }
+
+  expireCombo() {
+    if (this.combo === 0 || this.time.now - this.lastComboAt < 1900) {
+      return;
+    }
+
+    this.combo = 0;
+    this.comboText.setText("");
   }
 
   updatePowerUpState() {
@@ -1518,6 +1566,11 @@ class GameScene extends Phaser.Scene {
 
   updatePowerUpLabels() {
     this.powerUps.getChildren().forEach((powerUp) => {
+      const visual = powerUp.getData("visual");
+      if (visual?.active) {
+        visual.setPosition(powerUp.x, powerUp.y);
+      }
+
       const label = powerUp.getData("label");
       if (!label?.active) {
         return;
@@ -1547,6 +1600,7 @@ class GameScene extends Phaser.Scene {
 
   addCombo(amount, message, x, y, color) {
     this.combo = Math.min(24, this.combo + amount);
+    this.lastComboAt = this.time.now;
     const bonus = Math.min(18, Math.max(0, this.combo - 3));
     this.score += bonus;
     this.comboText.setText(this.combo >= 4 ? `Combo x${this.combo}` : "");
@@ -1567,13 +1621,14 @@ class GameScene extends Phaser.Scene {
   getNextObstacle(options) {
     if (this.obstaclePattern.length === 0) {
       const early = [
-        ["stomp", "dive", "stomp"],
-        ["dive", "stomp", "dive"],
+        ["jump", "dive", "jump"],
+        ["dive", "jump", "dive"],
       ];
       const later = [
-        ["stomp", "dive", "stomp", "dive"],
-        ["dive", "stomp", "stomp", "dive"],
-        ["stomp", "stomp", "dive", "stomp"],
+        ["jump", "dive", "stomp", "dive"],
+        ["dive", "stomp", "jump", "dive"],
+        ["stomp", "jump", "dive", "stomp"],
+        ["jump", "stomp", "dive", "jump"],
       ];
       this.obstaclePattern = Phaser.Utils.Array.GetRandom(this.runTime < 35 ? early : later).slice();
     }
@@ -1623,7 +1678,8 @@ class GameScene extends Phaser.Scene {
 
       pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 28, attractStrength);
       pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 4, attractStrength);
-      pearl.setVelocityX(Math.min(pearl.body.velocity.x, -this.speed * 0.42));
+      const targetVelocity = -this.speed * (magnetActive ? 0.24 : 0.42);
+      pearl.setVelocityX(Math.max(pearl.body.velocity.x, targetVelocity));
 
       if (distance < collectDistance) {
         this.collectPearl(this.duck, pearl);
