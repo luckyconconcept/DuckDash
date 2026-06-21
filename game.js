@@ -2,6 +2,7 @@ const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
 const WATERLINE = 500;
+const DUCK_WATERLINE = 486;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -452,14 +453,14 @@ class GameScene extends Phaser.Scene {
     this.collectibles = this.physics.add.group({ allowGravity: false });
     this.powerUps = this.physics.add.group({ allowGravity: false });
 
-    this.duck = this.physics.add.sprite(220, WATERLINE - 80, "duck");
+    this.duck = this.physics.add.sprite(220, DUCK_WATERLINE - 80, "duck");
     this.duck.setScale(0.52);
     this.setDuckNormalBody();
     this.duck.setCollideWorldBounds(true);
     this.duck.setGravityY(1320);
     this.duck.setDepth(8);
 
-    this.ground = this.add.rectangle(GAME_WIDTH / 2, WATERLINE + 8, GAME_WIDTH, 24, 0x21a8c9, 0);
+    this.ground = this.add.rectangle(GAME_WIDTH / 2, DUCK_WATERLINE + 8, GAME_WIDTH, 24, 0x21a8c9, 0);
     this.physics.add.existing(this.ground, true);
     this.physics.add.collider(this.duck, this.ground);
     this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
