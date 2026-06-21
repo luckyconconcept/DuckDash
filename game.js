@@ -2236,32 +2236,8 @@ function addWaterOverlay(scene) {
   wash.fillGradientStyle(0x6ff4ff, 0x6ff4ff, 0x0877b8, 0x043d76, 0, 0, 0.1, 0.15);
   wash.fillRect(0, WATER_SURFACE_Y + 10, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y - 10);
 
-  addCurrentSprites(scene, baseDepth + 0.08);
   addAnimatedWaterSurface(scene, baseDepth + 0.18);
-  addWaterCausticRibbons(scene, baseDepth + 0.22);
   addSurfaceShimmer(scene, baseDepth + 0.24);
-
-  const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.1, 7, 168, 5);
-  deepCurrent.setDepth(baseDepth + 0.1);
-  scene.tweens.add({
-    targets: deepCurrent,
-    x: -520,
-    duration: 6200,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.inOut",
-  });
-
-  const nearCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 172, 0xd8ffff, 0.085, 8, 220, 4);
-  nearCurrent.setDepth(baseDepth + 0.15);
-  scene.tweens.add({
-    targets: nearCurrent,
-    x: -620,
-    duration: 8600,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.inOut",
-  });
 
   addBathtubRunoff(scene, baseDepth + 0.35);
   addWaterGlints(scene, baseDepth + 0.2);
