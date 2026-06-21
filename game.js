@@ -2236,6 +2236,8 @@ function addWaterOverlay(scene) {
   wash.fillRect(0, WATER_SURFACE_Y + 10, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y - 10);
 
   addCurrentSprites(scene, baseDepth + 0.08);
+  addWaterCausticRibbons(scene, baseDepth + 0.22);
+  addSurfaceShimmer(scene, baseDepth + 0.24);
 
   const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.1, 7, 168, 5);
   deepCurrent.setDepth(baseDepth + 0.1);
@@ -2288,6 +2290,77 @@ function addCurrentSprites(scene, depth) {
       ease: "Sine.inOut",
     });
   });
+}
+
+function addWaterCausticRibbons(scene, depth) {
+  const ribbons = [
+    { y: WATER_SURFACE_Y + 72, alpha: 0.18, amp: 7, wave: 74, width: 3, duration: 4200, drift: -300 },
+    { y: WATER_SURFACE_Y + 126, alpha: 0.2, amp: 10, wave: 92, width: 4, duration: 5600, drift: -420 },
+    { y: WATER_SURFACE_Y + 188, alpha: 0.16, amp: 12, wave: 118, width: 3, duration: 6800, drift: -360 },
+  ];
+
+  ribbons.forEach((config, index) => {
+    const graphic = scene.add.graphics();
+    const width = GAME_WIDTH + 620;
+    graphic.x = -180 + index * 46;
+    graphic.setDepth(depth);
+    graphic.setAlpha(0.78);
+    graphic.setBlendMode(Phaser.BlendModes.SCREEN);
+    graphic.lineStyle(config.width, 0xeaffff, config.alpha);
+
+    for (let lane = 0; lane < 3; lane += 1) {
+      graphic.beginPath();
+      const laneY = config.y + lane * 18;
+      graphic.moveTo(0, laneY);
+      for (let x = 0; x <= width; x += 18) {
+        const y =
+          laneY +
+          Math.sin((x + lane * 38) / config.wave) * config.amp +
+          Math.sin((x + index * 83) / 37) * 2.5;
+        graphic.lineTo(x, y);
+      }
+      graphic.strokePath();
+    }
+
+    scene.tweens.add({
+      targets: graphic,
+      x: graphic.x + config.drift,
+      alpha: 0.34,
+      duration: config.duration,
+      delay: index * 420,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  });
+}
+
+function addSurfaceShimmer(scene, depth) {
+  for (let index = 0; index < 7; index += 1) {
+    const shimmer = scene.add.ellipse(
+      Phaser.Math.Between(60, GAME_WIDTH - 60),
+      WATER_SURFACE_Y + Phaser.Math.Between(22, 54),
+      Phaser.Math.Between(120, 240),
+      Phaser.Math.Between(6, 12),
+      0xeaffff,
+      Phaser.Math.FloatBetween(0.08, 0.16),
+    );
+    shimmer.setDepth(depth);
+    shimmer.setBlendMode(Phaser.BlendModes.SCREEN);
+    shimmer.setAngle(Phaser.Math.Between(-6, 6));
+
+    scene.tweens.add({
+      targets: shimmer,
+      x: shimmer.x - Phaser.Math.Between(180, 340),
+      alpha: Phaser.Math.FloatBetween(0.02, 0.08),
+      scaleX: Phaser.Math.FloatBetween(1.15, 1.55),
+      duration: Phaser.Math.Between(2400, 4200),
+      delay: Phaser.Math.Between(0, 1600),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  }
 }
 
 function drawWaterCurrent(scene, y, color, alpha, amplitude, wavelength, lanes) {
