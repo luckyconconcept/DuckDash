@@ -279,6 +279,8 @@ class GameScene extends Phaser.Scene {
     this.diveRecoverUntil = 0;
     this.lastDiveBubbleAt = 0;
     this.diveWake = null;
+    this.diveShade = null;
+    this.diveStatusText = null;
     this.shieldCharges = 0;
     this.magnetUntil = 0;
     this.turboUntil = 0;
@@ -564,6 +566,7 @@ class GameScene extends Phaser.Scene {
     this.duck.body.setSize(108, 52);
     this.duck.body.setOffset(66, 132);
     this.showDiveWake();
+    this.showDiveStatus();
     this.splash(this.duck.x - 38, this.duck.y + 48);
   }
 
@@ -1225,6 +1228,18 @@ class GameScene extends Phaser.Scene {
     this.diveWake = this.add.ellipse(this.duck.x + 24, this.duck.y + 42, 172, 54, 0x6ff4ff, 0.28);
     this.diveWake.setDepth(7);
     this.diveWake.setStrokeStyle(3, 0xeaffff, 0.45);
+
+    this.diveShade?.destroy();
+    this.diveShade = this.add.ellipse(this.duck.x + 22, this.duck.y + 52, 190, 72, 0x0ba4c8, 0.24);
+    this.diveShade.setDepth(8);
+  }
+
+  showDiveStatus() {
+    this.diveStatusText?.destroy();
+    this.diveStatusText = this.add.text(this.duck.x + 118, this.duck.y + 2, "UNTER WASSER", hudTextStyle(18, "#9df6ff"));
+    this.diveStatusText.setOrigin(0.5);
+    this.diveStatusText.setDepth(22);
+    this.diveStatusText.setAlpha(0.92);
   }
 
   syncDiveVisual() {
@@ -1233,6 +1248,8 @@ class GameScene extends Phaser.Scene {
     }
 
     this.diveWake?.setPosition(this.duck.x + 28, this.duck.y + 42);
+    this.diveShade?.setPosition(this.duck.x + 30, this.duck.y + 52);
+    this.diveStatusText?.setPosition(this.duck.x + 128, this.duck.y + 4);
     this.emitDiveBubble();
   }
 
@@ -1361,6 +1378,10 @@ class GameScene extends Phaser.Scene {
     }
     this.diveWake?.destroy();
     this.diveWake = null;
+    this.diveShade?.destroy();
+    this.diveShade = null;
+    this.diveStatusText?.destroy();
+    this.diveStatusText = null;
     this.splash(this.duck.x - 28, this.duck.y + 48);
     this.tweens.add({
       targets: this.duck,
@@ -1525,12 +1546,12 @@ class GameScene extends Phaser.Scene {
   }
 
   addCombo(amount, message, x, y, color) {
-    this.combo += amount;
-    const bonus = Math.max(0, this.combo - 2) * 2;
+    this.combo = Math.min(24, this.combo + amount);
+    const bonus = Math.min(18, Math.max(0, this.combo - 3));
     this.score += bonus;
-    this.comboText.setText(this.combo >= 3 ? `Combo x${this.combo}` : "");
+    this.comboText.setText(this.combo >= 4 ? `Combo x${this.combo}` : "");
 
-    const comboMessage = this.combo >= 5 ? `${message} +${bonus}` : message;
+    const comboMessage = bonus > 0 ? `${message} +${bonus}` : message;
     this.showFloatingText(comboMessage, x, y, color);
 
     this.tweens.killTweensOf(this.comboText);
@@ -1570,9 +1591,10 @@ class GameScene extends Phaser.Scene {
 
   pullNearbyCollectibles() {
     const magnetActive = this.isMagnetActive();
-    const attractDistance = magnetActive ? 360 : 210;
-    const attractStrength = magnetActive ? 0.075 : 0.032;
-    const collectDistance = magnetActive ? 126 : 96;
+    const attractDistance = magnetActive ? 315 : 172;
+    const attractStrength = magnetActive ? 0.062 : 0.022;
+    const collectDistance = magnetActive ? 112 : 82;
+    const lateCatchDistance = magnetActive ? 138 : 104;
 
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
@@ -1588,7 +1610,7 @@ class GameScene extends Phaser.Scene {
 
       if (pearl.x < this.duck.x + 14) {
         const passedDistance = Phaser.Math.Distance.Between(this.duck.x, this.duck.y, pearl.x, pearl.y);
-        if (passedDistance < 150) {
+        if (passedDistance < lateCatchDistance) {
           this.collectPearl(this.duck, pearl);
         }
         return;
