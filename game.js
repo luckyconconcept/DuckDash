@@ -1,7 +1,7 @@
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
-const WATERLINE = 518;
+const WATERLINE = 500;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -2231,8 +2231,8 @@ function addWaterOverlay(scene) {
   const baseDepth = 1;
   const wash = scene.add.graphics();
   wash.setDepth(baseDepth);
-  wash.fillGradientStyle(0x6ff4ff, 0x6ff4ff, 0x0877b8, 0x043d76, 0.05, 0.05, 0.12, 0.16);
-  wash.fillRect(0, WATER_SURFACE_Y - 8, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y + 8);
+  wash.fillGradientStyle(0x6ff4ff, 0x6ff4ff, 0x0877b8, 0x043d76, 0, 0, 0.1, 0.15);
+  wash.fillRect(0, WATER_SURFACE_Y + 10, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y - 10);
 
   addCurrentSprites(scene, baseDepth + 0.08);
 
@@ -2254,30 +2254,6 @@ function addWaterOverlay(scene) {
     duration: 9800,
     repeat: -1,
     ease: "Linear",
-  });
-
-  const surface = drawWaterSurface(scene, 0xffffff, 0.36, 0);
-  surface.setDepth(baseDepth + 0.3);
-  scene.tweens.add({
-    targets: surface,
-    x: -20,
-    y: 4,
-    duration: 3600,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.inOut",
-  });
-
-  const surfaceFoam = drawWaterSurface(scene, 0x6ff4ff, 0.28, 18);
-  surfaceFoam.setDepth(baseDepth + 0.31);
-  scene.tweens.add({
-    targets: surfaceFoam,
-    x: -320,
-    y: -3,
-    duration: 4700,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.inOut",
   });
 
   addBathtubRunoff(scene, baseDepth + 0.35);
@@ -2328,23 +2304,6 @@ function drawWaterCurrent(scene, y, color, alpha, amplitude, wavelength, lanes) 
     graphic.strokePath();
   }
 
-  return graphic;
-}
-
-function drawWaterSurface(scene, color, alpha, phase) {
-  const graphic = scene.add.graphics();
-  const width = GAME_WIDTH + 360;
-  graphic.x = -180;
-  graphic.lineStyle(3, color, alpha);
-  graphic.beginPath();
-  graphic.moveTo(0, WATER_SURFACE_Y);
-
-  for (let x = 0; x <= width; x += 14) {
-    const y = WATER_SURFACE_Y + Math.sin((x + phase) / 42) * 4 + Math.sin((x + phase) / 105) * 2;
-    graphic.lineTo(x, y);
-  }
-
-  graphic.strokePath();
   return graphic;
 }
 
