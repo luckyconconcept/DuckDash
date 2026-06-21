@@ -1,7 +1,7 @@
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
-const WATERLINE = 530;
+const WATERLINE = 518;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -2256,24 +2256,28 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const surface = drawWaterSurface(scene, 0xffffff, 0.26, 0);
+  const surface = drawWaterSurface(scene, 0xffffff, 0.36, 0);
   surface.setDepth(baseDepth + 0.3);
   scene.tweens.add({
     targets: surface,
-    x: -160,
-    duration: 4300,
+    x: -20,
+    y: 4,
+    duration: 3600,
+    yoyo: true,
     repeat: -1,
-    ease: "Linear",
+    ease: "Sine.inOut",
   });
 
-  const surfaceFoam = drawWaterSurface(scene, 0x6ff4ff, 0.18, 18);
+  const surfaceFoam = drawWaterSurface(scene, 0x6ff4ff, 0.28, 18);
   surfaceFoam.setDepth(baseDepth + 0.31);
   scene.tweens.add({
     targets: surfaceFoam,
-    x: 140,
-    duration: 5200,
+    x: -320,
+    y: -3,
+    duration: 4700,
+    yoyo: true,
     repeat: -1,
-    ease: "Linear",
+    ease: "Sine.inOut",
   });
 
   addBathtubRunoff(scene, baseDepth + 0.35);
