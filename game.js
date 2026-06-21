@@ -3,6 +3,9 @@ const GAME_HEIGHT = 720;
 const WATERLINE = 560;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [430, 400, 368];
+const DIVE_MIN_DURATION = 260;
+const DIVE_MAX_DURATION = 680;
+const DIVE_RECOVERY_DURATION = 260;
 
 const QUIPS = [
   "QUAK!",
@@ -235,6 +238,8 @@ class GameScene extends Phaser.Scene {
     this.invulnerableUntil = 0;
     this.isDiving = false;
     this.diveUntil = 0;
+    this.diveStartedAt = 0;
+    this.diveHeld = false;
     this.diveRecoverUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
@@ -356,7 +361,8 @@ class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.input.keyboard.on("keydown-SPACE", () => this.jump());
     this.input.keyboard.on("keydown-UP", () => this.jump());
-    this.input.keyboard.on("keydown-DOWN", () => this.dive());
+    this.input.keyboard.on("keydown-DOWN", () => this.dive(true));
+    this.input.keyboard.on("keyup-DOWN", () => this.releaseDive());
     this.input.keyboard.on("keydown-ESC", () => this.togglePause());
 
     this.input.on("pointerdown", (pointer) => {
@@ -373,13 +379,18 @@ class GameScene extends Phaser.Scene {
       const deltaY = pointer.y - this.touchStartY;
       if (deltaY > 52) {
         this.touchSwipeHandled = true;
-        this.dive();
+        this.dive(true);
       }
     });
 
     this.input.on("pointerup", (pointer) => {
       const deltaX = Math.abs(pointer.x - this.touchStartX);
       const deltaY = pointer.y - this.touchStartY;
+      if (this.touchSwipeHandled) {
+        this.releaseDive();
+        return;
+      }
+
       if (!this.touchSwipeHandled && deltaY < 42 && deltaX < 54) {
         this.jump();
       }
@@ -450,7 +461,7 @@ class GameScene extends Phaser.Scene {
     this.splash(this.duck.x - 48, this.duck.y + 42);
   }
 
-  dive() {
+  dive(held = false) {
     if (this.isGameOver || this.isPaused) {
       return;
     }
@@ -460,7 +471,9 @@ class GameScene extends Phaser.Scene {
     }
 
     this.isDiving = true;
-    this.diveUntil = this.time.now + 520;
+    this.diveHeld = held;
+    this.diveStartedAt = this.time.now;
+    this.diveUntil = this.time.now + DIVE_MIN_DURATION;
     SoundFX.unlock();
     SoundFX.dive();
     this.duck.setVelocityY(520);
@@ -469,6 +482,17 @@ class GameScene extends Phaser.Scene {
     this.duck.body.setSize(108, 52);
     this.duck.body.setOffset(66, 132);
     this.splash(this.duck.x - 38, this.duck.y + 48);
+  }
+
+  releaseDive() {
+    if (!this.isDiving) {
+      return;
+    }
+
+    this.diveHeld = false;
+    if (this.time.now >= this.diveUntil) {
+      this.finishDive();
+    }
   }
 
   spawnObstacle() {
@@ -607,15 +631,17 @@ class GameScene extends Phaser.Scene {
     const isDive = config.mode === "dive";
     const points = isDive
       ? [
-          { x: -255, y: WATERLINE - 54, key: "pearlBlue" },
-          { x: -150, y: WATERLINE - 62, key: "pearlBlue" },
-          { x: -42, y: WATERLINE - 56, key: "pearlGold" },
+          { x: -290, y: WATERLINE - 42, key: "pearlBlue" },
+          { x: -170, y: WATERLINE - 55, key: "pearlBlue" },
+          { x: 58, y: WATERLINE - 58, key: "pearlGold" },
+          { x: 158, y: WATERLINE - 82, key: "pearlPink" },
         ]
       : [
-          { x: -220, y: WATERLINE - 128, key: "pearlPink" },
-          { x: -118, y: WATERLINE - 184, key: "pearlBlue" },
-          { x: -12, y: WATERLINE - 218, key: "pearlGold" },
-          { x: 96, y: WATERLINE - 174, key: "pearlBlue" },
+          { x: -248, y: WATERLINE - 116, key: "pearlPink" },
+          { x: -136, y: WATERLINE - 182, key: "pearlBlue" },
+          { x: -20, y: WATERLINE - 224, key: "pearlGold" },
+          { x: 104, y: WATERLINE - 184, key: "pearlBlue" },
+          { x: 202, y: WATERLINE - 128, key: "pearlPink" },
         ];
 
     points.forEach((point, index) => {
@@ -946,12 +972,29 @@ class GameScene extends Phaser.Scene {
   }
 
   updateDiveState() {
-    if (!this.isDiving || this.time.now < this.diveUntil) {
+    if (!this.isDiving) {
+      return;
+    }
+
+    if (this.time.now < this.diveUntil) {
+      return;
+    }
+
+    if (this.diveHeld && this.time.now < this.diveStartedAt + DIVE_MAX_DURATION) {
+      return;
+    }
+
+    this.finishDive();
+  }
+
+  finishDive() {
+    if (!this.isDiving) {
       return;
     }
 
     this.isDiving = false;
-    this.diveRecoverUntil = this.time.now + 360;
+    this.diveHeld = false;
+    this.diveRecoverUntil = this.time.now + DIVE_RECOVERY_DURATION;
     this.setDuckNormalBody();
     this.duck.setVelocityY(-360);
     this.duck.setAngle(-10);
@@ -971,19 +1014,25 @@ class GameScene extends Phaser.Scene {
   }
 
   canStomp(obstacle) {
-    return !this.isDiving && this.duck.body.velocity.y > 80 && this.duck.y < obstacle.y - 26;
+    const duckBottom = this.duck.body.y + this.duck.body.height;
+    const obstacleTop = obstacle.body.y;
+    return !this.isDiving && this.duck.body.velocity.y > -60 && duckBottom < obstacleTop + 34;
   }
 
   stompObstacle(obstacle) {
     obstacle.body.enable = false;
     this.destroyObstacleVisuals(obstacle);
     obstacle.getData("label")?.destroy();
-    this.score += 35;
-    this.addCombo(3, "PLATSCH!", obstacle.x, obstacle.y - 90, "#ffd43f");
+    const isPerfect = Math.abs(this.duck.x - obstacle.x) < 54;
+    this.score += isPerfect ? 55 : 35;
+    this.addCombo(isPerfect ? 5 : 3, isPerfect ? "PERFEKT DRAUF!" : "PLATSCH!", obstacle.x, obstacle.y - 90, "#ffd43f");
     SoundFX.success();
     this.duck.setVelocityY(-520);
     this.splash(obstacle.x, obstacle.y);
-    this.burst(obstacle.x, obstacle.y, ["pearlBlue"], 20, 0.1, 130);
+    this.burst(obstacle.x, obstacle.y, isPerfect ? ["pearlGold", "pearlBlue"] : ["pearlBlue"], isPerfect ? 30 : 20, isPerfect ? 0.13 : 0.1, isPerfect ? 170 : 130);
+    if (isPerfect) {
+      this.cameras.main.shake(80, 0.0035);
+    }
 
     this.tweens.add({
       targets: obstacle,
@@ -1019,10 +1068,12 @@ class GameScene extends Phaser.Scene {
     obstacle.body.enable = false;
     this.destroyObstacleVisuals(obstacle);
     obstacle.getData("label")?.destroy();
-    this.score += 30;
-    this.addCombo(3, "SAUBER DRUNTER!", obstacle.x, obstacle.y + 68, "#9df6ff");
+    const isPerfect = Math.abs(this.duck.x - obstacle.x) < 64;
+    this.score += isPerfect ? 50 : 30;
+    this.addCombo(isPerfect ? 5 : 3, isPerfect ? "KNAPP GETAUCHT!" : "SAUBER DRUNTER!", obstacle.x, obstacle.y + 68, "#9df6ff");
     SoundFX.success();
     this.splash(this.duck.x + 24, this.duck.y + 46);
+    this.burst(this.duck.x + 38, this.duck.y + 26, isPerfect ? ["pearlGold", "pearlBlue"] : ["pearlBlue"], isPerfect ? 18 : 10, 0.1, isPerfect ? 120 : 78);
   }
 
   addCombo(amount, message, x, y, color) {
