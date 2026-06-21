@@ -96,20 +96,29 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("bg", "assets/bathroom_bg.jpg");
+    this.load.image("bg", "assets/bathroom_bg_clean.jpg?v=20260621-assets3");
     this.load.image("logo", "assets/logo.png");
     this.load.image("duck", "assets/duck.png");
     this.load.image("soap", "assets/soap.png");
+    this.load.image("soapV2", "assets/soap_v2.png?v=20260621-assets3");
     this.load.image("toothbrush", "assets/toothbrush.png");
     this.load.image("whirlpool", "assets/whirlpool.png");
+    this.load.image("whirlpoolV2", "assets/whirlpool_v2.png?v=20260621-assets3");
     this.load.image("pearlPink", "assets/pearl_pink.png");
     this.load.image("pearlBlue", "assets/pearl_blue.png");
     this.load.image("pearlGold", "assets/pearl_gold.png");
+    this.load.image("shellPearl", "assets/shell_pearl.png?v=20260621-assets3");
+    this.load.image("starfishBonus", "assets/starfish_bonus.png?v=20260621-assets3");
     this.load.image("quackBomb", "assets/quack_bomb.png");
+    this.load.image("quackBombV2", "assets/quack_bomb_v2.png?v=20260621-assets3");
     this.load.image("cupBrush", "assets/cup_brush.png");
+    this.load.image("cupBrushV2", "assets/cup_brush_v2.png?v=20260621-assets3");
     this.load.image("powerupMagnet", "assets/powerup_magnet.png");
     this.load.image("powerupShield", "assets/powerup_shield.png");
     this.load.image("powerupTurbo", "assets/powerup_turbo.png");
+    this.load.image("powerupMagnetV2", "assets/powerup_magnet_v2.png?v=20260621-assets3");
+    this.load.image("powerupShieldV2", "assets/powerup_shield_v2.png?v=20260621-assets3");
+    this.load.image("powerupTurboV2", "assets/powerup_turbo_v2.png?v=20260621-assets3");
   }
 
   create() {
@@ -790,21 +799,21 @@ class GameScene extends Phaser.Scene {
 
     const options = [
       {
-        key: "soap",
+        key: "soapV2",
         y: WATERLINE - 24,
-        scale: 0.6,
+        scale: 0.5,
         speedBoost: 10,
-        body: [128, 38, 66, 68],
+        body: [142, 54, 70, 128],
         gap: 660,
         mode: "jump",
         prompt: "DRUEBER!",
       },
       {
-        key: "soap",
+        key: "soapV2",
         y: WATERLINE - 38,
-        scale: 0.76,
+        scale: 0.62,
         speedBoost: 14,
-        body: [150, 52, 58, 60],
+        body: [156, 58, 62, 124],
         gap: 740,
         mode: "jump",
         prompt: "WEIT DRUEBER!",
@@ -822,11 +831,11 @@ class GameScene extends Phaser.Scene {
         prompt: "TAUCH!",
       },
       {
-        key: "cupBrush",
+        key: "cupBrushV2",
         y: WATERLINE - 105,
-        scale: 0.33,
+        scale: 0.42,
         speedBoost: 16,
-        body: [132, 126, 150, 188],
+        body: [132, 126, 48, 198],
         gap: 800,
         mode: "dive",
         prompt: "TAUCH!",
@@ -845,11 +854,11 @@ class GameScene extends Phaser.Scene {
         labelOffset: 132,
       },
       {
-        key: "whirlpool",
+        key: "whirlpoolV2",
         y: WATERLINE - 18,
-        scale: 0.54,
+        scale: 0.42,
         speedBoost: 24,
-        body: [150, 56, 86, 94],
+        body: [168, 74, 88, 126],
         gap: 760,
         mode: "stomp",
         prompt: "DRAUF!",
@@ -873,7 +882,7 @@ class GameScene extends Phaser.Scene {
     obstacle.setData("prompt", pick.prompt);
     obstacle.setData("labelOffset", pick.labelOffset ?? (pick.mode === "dive" ? 74 : 88));
 
-    if (pick.key === "cupBrush") {
+    if (pick.key === "cupBrush" || pick.key === "cupBrushV2") {
       this.decorateCupBrush(obstacle);
     } else if (pick.visual === "foamgate") {
       this.decorateFoamGate(obstacle);
@@ -994,9 +1003,9 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnPearlAt(x, y, key, velocityX, trailId = null) {
-    const value = key === "pearlGold" ? 50 : 10;
+    const value = getCollectibleValue(key);
     const pearl = this.collectibles.create(x, y, key);
-    pearl.setScale(key === "pearlGold" ? 0.58 : 0.52);
+    pearl.setScale(getCollectibleScale(key));
     pearl.body.setCircle(54);
     pearl.body.setOffset(-6, -6);
     pearl.setVelocityX(velocityX);
@@ -1024,7 +1033,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const roll = Phaser.Math.Between(1, 100);
-    const key = roll > 84 ? "pearlGold" : roll > 48 ? "pearlBlue" : "pearlPink";
+    const key = roll > 96 ? "starfishBonus" : roll > 90 ? "shellPearl" : roll > 78 ? "pearlGold" : roll > 44 ? "pearlBlue" : "pearlPink";
     const safeLane = Phaser.Utils.Array.GetRandom(COLLECTIBLE_LANES);
     this.spawnPearlAt(GAME_WIDTH + 100, safeLane, key, -this.speed * 0.78);
   }
@@ -1046,10 +1055,10 @@ class GameScene extends Phaser.Scene {
     this.pendingPowerUpRetry = false;
     this.nextPowerUpAt = this.time.now + 6800;
     const options = [
-      { type: "bomb", key: "quackBomb", label: "BOMBE", icon: "!", color: "#ffd43f", ring: 0xffd43f, scale: 0.78, tint: null },
-      { type: "magnet", key: "powerupMagnet", label: "MAGNET", icon: "", color: "#ffd43f", ring: 0xff70ad, scale: 0.23, tint: null },
-      { type: "shield", key: "powerupShield", label: "SCHILD", icon: "", color: "#9df6ff", ring: 0x9df6ff, scale: 0.24, tint: null },
-      { type: "turbo", key: "powerupTurbo", label: "TURBO", icon: "", color: "#ff70ad", ring: 0xff70ad, scale: 0.25, tint: null },
+      { type: "bomb", key: "quackBombV2", label: "BOMBE", icon: "", color: "#ffd43f", ring: 0xffd43f, scale: 0.52, tint: null },
+      { type: "magnet", key: "powerupMagnetV2", label: "MAGNET", icon: "", color: "#ffd43f", ring: 0xff70ad, scale: 0.45, tint: null },
+      { type: "shield", key: "powerupShieldV2", label: "SCHILD", icon: "", color: "#9df6ff", ring: 0x9df6ff, scale: 0.45, tint: null },
+      { type: "turbo", key: "powerupTurboV2", label: "TURBO", icon: "", color: "#ff70ad", ring: 0xff70ad, scale: 0.46, tint: null },
     ];
     const config = Phaser.Utils.Array.GetRandom(this.runTime < 32 ? options.slice(0, 3) : options);
     const powerUp = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), config.key);
@@ -1134,14 +1143,15 @@ class GameScene extends Phaser.Scene {
     if (driftBonus > 0) {
       this.score += driftBonus;
     }
+    const isRareCollectible = value >= 80;
     this.addCombo(
-      (value >= 50 ? 2 : 1) + (driftBonus > 0 ? 1 : 0),
-      driftBonus > 0 ? `SAUBERE LINIE! +${driftBonus}` : value >= 50 ? "GOLDPERLE!" : "PERLE!",
+      (value >= 50 ? 2 : 1) + (isRareCollectible ? 1 : 0) + (driftBonus > 0 ? 1 : 0),
+      driftBonus > 0 ? `SAUBERE LINIE! +${driftBonus}` : getCollectibleMessage(pearl.texture.key),
       pearl.x,
       pearl.y - 50,
-      driftBonus > 0 ? "#9df6ff" : "#ffd43f",
+      driftBonus > 0 ? "#9df6ff" : isRareCollectible ? "#ff70ad" : "#ffd43f",
     );
-    this.burst(pearl.x, pearl.y, [pearl.texture.key], value >= 50 ? 14 : 9, value >= 50 ? 0.18 : 0.12, value >= 50 ? 86 : 62);
+    this.burst(pearl.x, pearl.y, [pearl.texture.key], value >= 50 ? 16 : 9, value >= 80 ? 0.16 : value >= 50 ? 0.18 : 0.12, value >= 80 ? 112 : value >= 50 ? 86 : 62);
     this.splash(pearl.x, pearl.y);
     pearl.setActive(false);
     pearl.body.enable = false;
@@ -1214,7 +1224,7 @@ class GameScene extends Phaser.Scene {
     this.score += 35;
     this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
     this.cameras.main.shake(120, 0.006);
-    this.burst(this.duck.x + 30, this.duck.y - 10, ["pearlGold", "pearlBlue", "quackBomb"], 22, 0.15, 210);
+    this.burst(this.duck.x + 30, this.duck.y - 10, ["pearlGold", "pearlBlue", "quackBombV2"], 22, 0.15, 210);
 
     const ring = this.add.circle(this.duck.x, this.duck.y, 18);
     ring.setDepth(18);
@@ -2062,6 +2072,42 @@ function isWithinButton(pointer, x, y, label) {
 
 function isWithinRoundButton(pointer, x, y) {
   return Math.abs(pointer.x - x) <= 42 && Math.abs(pointer.y - y) <= 42;
+}
+
+function getCollectibleValue(key) {
+  if (key === "starfishBonus") {
+    return 150;
+  }
+  if (key === "shellPearl") {
+    return 100;
+  }
+  if (key === "pearlGold") {
+    return 50;
+  }
+  return 10;
+}
+
+function getCollectibleScale(key) {
+  if (key === "starfishBonus") {
+    return 0.44;
+  }
+  if (key === "shellPearl") {
+    return 0.42;
+  }
+  return key === "pearlGold" ? 0.58 : 0.52;
+}
+
+function getCollectibleMessage(key) {
+  if (key === "starfishBonus") {
+    return "SEESTERN!";
+  }
+  if (key === "shellPearl") {
+    return "MUSCHELPERLE!";
+  }
+  if (key === "pearlGold") {
+    return "GOLDPERLE!";
+  }
+  return "PERLE!";
 }
 
 function makeRoundButton(scene, x, y, label) {
