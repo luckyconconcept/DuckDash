@@ -7,8 +7,8 @@ const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
 const DIVE_RECOVERY_DURATION = 260;
 const DUCK_HOME_X = 220;
-const DUCK_MIN_X = 96;
-const DUCK_MAX_X = 420;
+const DUCK_MIN_X = 72;
+const DUCK_MAX_X = 720;
 const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
@@ -1751,7 +1751,7 @@ class GameScene extends Phaser.Scene {
       targetX = DUCK_MAX_X;
     }
 
-    const desiredVelocity = Phaser.Math.Clamp((targetX - this.duck.x) * 8, -340, 340);
+    const desiredVelocity = Phaser.Math.Clamp((targetX - this.duck.x) * 8, -520, 520);
     this.duck.setVelocityX(desiredVelocity);
     this.duck.x = Phaser.Math.Clamp(this.duck.x, DUCK_MIN_X, DUCK_MAX_X);
 
@@ -1769,10 +1769,10 @@ class GameScene extends Phaser.Scene {
     }
 
     const offset = Math.abs(this.duck.x - DUCK_HOME_X);
-    if (offset > 130) {
+    if (offset > 280) {
       return 12;
     }
-    if (offset > 65) {
+    if (offset > 140) {
       return 6;
     }
     return 0;
