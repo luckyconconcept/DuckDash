@@ -689,6 +689,7 @@ class GameScene extends Phaser.Scene {
     this.updateHorizontalControl(deltaSeconds);
     this.updateObstacleLabels();
     this.updatePowerUpLabels();
+    this.resolveObstacleChallengeWindows();
     this.rewardPassedJumpObstacles();
 
     if (this.score >= this.lastMilestone + 500) {
@@ -818,7 +819,7 @@ class GameScene extends Phaser.Scene {
         y: WATERLINE - 24,
         scale: 0.5,
         speedBoost: 10,
-        body: [142, 54, 70, 128],
+        body: [170, 96, 45, 20],
         gap: 660,
         mode: "jump",
         prompt: "DRUEBER!",
@@ -828,7 +829,7 @@ class GameScene extends Phaser.Scene {
         y: WATERLINE - 38,
         scale: 0.62,
         speedBoost: 14,
-        body: [156, 58, 62, 124],
+        body: [164, 110, 60, 22],
         gap: 740,
         mode: "jump",
         prompt: "WEIT DRUEBER!",
@@ -837,20 +838,20 @@ class GameScene extends Phaser.Scene {
       },
       {
         key: "toothbrush",
-        y: WATERLINE - 134,
+        y: WATERLINE - 78,
         scale: 0.5,
         speedBoost: 18,
-        body: [206, 46, 70, 88],
+        body: [230, 98, 58, 56],
         gap: 760,
         mode: "dive",
         prompt: "TAUCH!",
       },
       {
         key: "cupBrushV2",
-        y: WATERLINE - 105,
+        y: WATERLINE - 78,
         scale: 0.42,
         speedBoost: 16,
-        body: [132, 126, 48, 198],
+        body: [150, 102, 40, 56],
         gap: 800,
         mode: "dive",
         prompt: "TAUCH!",
@@ -858,10 +859,10 @@ class GameScene extends Phaser.Scene {
       },
       {
         key: "pearlBlue",
-        y: WATERLINE - 118,
+        y: WATERLINE - 76,
         scale: 0.18,
         speedBoost: 12,
-        body: [124, 178, -6, -16],
+        body: [840, 104, -360, 54],
         gap: 820,
         mode: "dive",
         prompt: "TIEF TAUCHEN!",
@@ -873,7 +874,7 @@ class GameScene extends Phaser.Scene {
         y: WATERLINE - 18,
         scale: 0.42,
         speedBoost: 24,
-        body: [168, 74, 88, 126],
+        body: [168, 90, 88, 44],
         gap: 760,
         mode: "stomp",
         prompt: "DRAUF!",
@@ -1865,11 +1866,63 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      obstacle.setData("passed", true);
-      this.score += 25;
-      this.addCombo(2, "DRUEBER!", obstacle.x, obstacle.y - 82, "#ffd43f");
-      SoundFX.success();
+      if (!this.hasClearedJumpObstacle(obstacle)) {
+        return;
+      }
+
+      this.scoreJumpObstacle(obstacle);
     });
+  }
+
+  resolveObstacleChallengeWindows() {
+    this.obstacles.getChildren().forEach((obstacle) => {
+      if (!obstacle.active || obstacle.getData("passed") || obstacle.x > this.duck.x + 74 || obstacle.x < this.duck.x - 96) {
+        return;
+      }
+
+      const mode = obstacle.getData("mode");
+      if (mode === "jump") {
+        if (this.hasClearedJumpObstacle(obstacle)) {
+          this.scoreJumpObstacle(obstacle);
+          return;
+        }
+
+        this.handleHit(this.duck, obstacle);
+        return;
+      }
+
+      if (mode === "dive") {
+        if (this.isDiving) {
+          this.passUnderObstacle(obstacle);
+          return;
+        }
+
+        this.handleHit(this.duck, obstacle);
+        return;
+      }
+
+      if (mode === "stomp") {
+        if (this.canStomp(obstacle)) {
+          this.stompObstacle(obstacle);
+          return;
+        }
+
+        this.handleHit(this.duck, obstacle);
+      }
+    });
+  }
+
+  scoreJumpObstacle(obstacle) {
+    obstacle.setData("passed", true);
+    this.score += 25;
+    this.addCombo(2, "DRUEBER!", obstacle.x, obstacle.y - 82, "#ffd43f");
+    SoundFX.success();
+  }
+
+  hasClearedJumpObstacle(obstacle) {
+    const duckBottom = this.duck.body.y + this.duck.body.height;
+    const obstacleTop = obstacle.body.y;
+    return !this.isDiving && !this.duck.body.blocked.down && duckBottom < obstacleTop + 28;
   }
 
   stompObstacle(obstacle) {
@@ -1970,7 +2023,7 @@ class GameScene extends Phaser.Scene {
     if (this.obstaclePattern.length === 0) {
       const early = [
         ["jump", "dive", "jump"],
-        ["dive", "jump", "dive"],
+        ["jump", "jump", "dive"],
       ];
       const later = [
         ["jump", "dive", "stomp", "dive"],
@@ -1983,7 +2036,7 @@ class GameScene extends Phaser.Scene {
 
     const desiredMode = this.obstaclePattern.shift();
     const candidates = options.filter((option) => option.mode === desiredMode);
-    const cupBrush = candidates.find((option) => option.visual === "cupbrush");
+    const cupBrush = candidates.find((option) => option.key === "cupBrush" || option.key === "cupBrushV2");
     if (cupBrush && !this.cupBrushIntroduced) {
       this.cupBrushIntroduced = true;
       return cupBrush;
@@ -1994,10 +2047,10 @@ class GameScene extends Phaser.Scene {
 
   pullNearbyCollectibles() {
     const magnetActive = this.isMagnetActive();
-    const attractDistance = magnetActive ? 315 : 172;
-    const attractStrength = magnetActive ? 0.062 : 0.022;
-    const collectDistance = magnetActive ? 112 : 82;
-    const lateCatchDistance = magnetActive ? 138 : 104;
+    const attractDistance = magnetActive ? 315 : 54;
+    const attractStrength = magnetActive ? 0.062 : 0;
+    const collectDistance = magnetActive ? 112 : 48;
+    const lateCatchDistance = magnetActive ? 138 : 54;
 
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
@@ -2091,10 +2144,10 @@ function addWaterOverlay(scene) {
   const baseDepth = 1;
   const water = scene.add.graphics();
   water.setDepth(baseDepth);
-  water.fillGradientStyle(0x27d4ee, 0x27d4ee, 0x0aa8d7, 0x0877b8, 0.28, 0.28, 0.42, 0.46);
+  water.fillGradientStyle(0x27d4ee, 0x27d4ee, 0x0aa8d7, 0x0877b8, 0.18, 0.18, 0.32, 0.34);
   water.fillRect(0, WATERLINE - 18, GAME_WIDTH, GAME_HEIGHT - WATERLINE + 18);
 
-  const deepCurrent = drawWaterCurrent(scene, WATERLINE + 46, 0x7cfaff, 0.18, 7, 142, 5);
+  const deepCurrent = drawWaterCurrent(scene, WATERLINE + 48, 0x7cfaff, 0.07, 5, 160, 4);
   deepCurrent.setDepth(baseDepth + 0.1);
   scene.tweens.add({
     targets: deepCurrent,
@@ -2104,7 +2157,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const nearCurrent = drawWaterCurrent(scene, WATERLINE + 108, 0xd8ffff, 0.14, 9, 184, 4);
+  const nearCurrent = drawWaterCurrent(scene, WATERLINE + 112, 0xd8ffff, 0.06, 6, 210, 3);
   nearCurrent.setDepth(baseDepth + 0.15);
   scene.tweens.add({
     targets: nearCurrent,
@@ -2114,7 +2167,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const surface = drawWaterSurface(scene, 0xa4fbff, 0.32, 0);
+  const surface = drawWaterSurface(scene, 0xa4fbff, 0.2, 0);
   surface.setDepth(baseDepth + 0.3);
   scene.tweens.add({
     targets: surface,
@@ -2124,7 +2177,7 @@ function addWaterOverlay(scene) {
     ease: "Linear",
   });
 
-  const surfaceFoam = drawWaterSurface(scene, 0xffffff, 0.22, 18);
+  const surfaceFoam = drawWaterSurface(scene, 0xffffff, 0.12, 18);
   surfaceFoam.setDepth(baseDepth + 0.31);
   scene.tweens.add({
     targets: surfaceFoam,
@@ -2175,14 +2228,14 @@ function drawWaterSurface(scene, color, alpha, phase) {
 }
 
 function addWaterGlints(scene, depth) {
-  for (let index = 0; index < 14; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     const glint = scene.add.ellipse(
       Phaser.Math.Between(20, GAME_WIDTH - 20),
       Phaser.Math.Between(WATERLINE + 28, GAME_HEIGHT - 26),
       Phaser.Math.Between(42, 98),
       Phaser.Math.Between(4, 9),
       0xeaffff,
-      Phaser.Math.FloatBetween(0.1, 0.22),
+      Phaser.Math.FloatBetween(0.05, 0.12),
     );
     glint.setDepth(depth);
     glint.setAngle(Phaser.Math.Between(-8, 8));
@@ -2190,7 +2243,7 @@ function addWaterGlints(scene, depth) {
     scene.tweens.add({
       targets: glint,
       x: glint.x - Phaser.Math.Between(120, 260),
-      alpha: Phaser.Math.FloatBetween(0.04, 0.16),
+      alpha: Phaser.Math.FloatBetween(0.02, 0.08),
       duration: Phaser.Math.Between(3600, 6400),
       delay: Phaser.Math.Between(0, 2200),
       yoyo: true,
