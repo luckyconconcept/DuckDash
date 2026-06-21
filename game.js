@@ -235,6 +235,7 @@ class GameScene extends Phaser.Scene {
     this.invulnerableUntil = 0;
     this.isDiving = false;
     this.diveUntil = 0;
+    this.diveRecoverUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
@@ -406,7 +407,7 @@ class GameScene extends Phaser.Scene {
 
     this.updateHud();
     this.updateDiveState();
-    if (!this.isDiving) {
+    if (!this.isDiving && this.time.now > this.diveRecoverUntil) {
       this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
     }
     this.pullNearbyCollectibles();
@@ -454,18 +455,17 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.isDiving) {
+    if (this.isDiving || this.time.now < this.diveRecoverUntil) {
       return;
     }
 
     this.isDiving = true;
-    this.diveUntil = this.time.now + 760;
+    this.diveUntil = this.time.now + 520;
     SoundFX.unlock();
     SoundFX.dive();
-    this.duck.setVelocityY(760);
-    this.duck.setAngle(16);
-    this.duck.setTint(0x9df6ff);
-    this.duck.setAlpha(0.78);
+    this.duck.setVelocityY(520);
+    this.duck.setAngle(12);
+    this.duck.setAlpha(1);
     this.duck.body.setSize(108, 52);
     this.duck.body.setOffset(66, 132);
     this.splash(this.duck.x - 38, this.duck.y + 48);
@@ -951,11 +951,23 @@ class GameScene extends Phaser.Scene {
     }
 
     this.isDiving = false;
+    this.diveRecoverUntil = this.time.now + 360;
     this.setDuckNormalBody();
+    this.duck.setVelocityY(-360);
+    this.duck.setAngle(-10);
     this.duck.setAlpha(1);
-    if (this.time.now >= this.invulnerableUntil) {
-      this.duck.clearTint();
-    }
+    this.splash(this.duck.x - 28, this.duck.y + 48);
+    this.tweens.add({
+      targets: this.duck,
+      angle: -4,
+      duration: 180,
+      ease: "Cubic.out",
+    });
+    this.time.delayedCall(210, () => {
+      if (!this.isGameOver && !this.isDiving && this.time.now >= this.invulnerableUntil) {
+        this.duck.clearTint();
+      }
+    });
   }
 
   canStomp(obstacle) {
