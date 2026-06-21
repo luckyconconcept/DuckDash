@@ -2538,15 +2538,15 @@ function setHeartIconColor(heart, color) {
 
 function drawHeartIcon(graphic, color) {
   graphic.clear();
+  graphic.fillStyle(0xffffff, 0.78);
+  graphic.fillCircle(-8, -7, 13);
+  graphic.fillCircle(8, -7, 13);
+  graphic.fillTriangle(-24, -3, 24, -3, 0, 23);
+
   graphic.fillStyle(color, 1);
-  graphic.lineStyle(3, 0xffffff, 0.78);
-  graphic.beginPath();
-  graphic.moveTo(0, 18);
-  graphic.bezierCurveTo(-31, -4, -18, -28, 0, -13);
-  graphic.bezierCurveTo(18, -28, 31, -4, 0, 18);
-  graphic.closePath();
-  graphic.fillPath();
-  graphic.strokePath();
+  graphic.fillCircle(-8, -7, 10);
+  graphic.fillCircle(8, -7, 10);
+  graphic.fillTriangle(-20, -2, 20, -2, 0, 19);
 }
 
 function makeSpecialSlot(scene, x, y, iconKey, label, color) {
