@@ -3,7 +3,7 @@ const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
 const WATERLINE = 500;
 const DUCK_WATERLINE = 476;
-const WATER_TUNING_MODE = true;
+const WATER_TUNING_MODE = false;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -12,6 +12,8 @@ const DIVE_RECOVERY_DURATION = 260;
 const DUCK_HOME_X = 220;
 const DUCK_MIN_X = 72;
 const DUCK_MAX_X = 720;
+const HUD_PAUSE_X = GAME_WIDTH - 54;
+const HUD_PAUSE_Y = 56;
 const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
@@ -406,6 +408,7 @@ class GameScene extends Phaser.Scene {
     this.shieldCharges = 0;
     this.magnetUntil = 0;
     this.turboUntil = 0;
+    this.bombFlashUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
@@ -489,40 +492,24 @@ class GameScene extends Phaser.Scene {
   }
 
   createHud() {
-    const panel = this.add.graphics();
-    panel.fillStyle(0x062941, 0.54);
-    panel.fillRoundedRect(24, 22, 310, 132, 18);
-    panel.lineStyle(2, 0x71f1ff, 0.34);
-    panel.strokeRoundedRect(24, 22, 310, 132, 18);
-
-    this.scoreText = this.add.text(48, 38, "0", hudTextStyle(34, "#ffffff"));
-    this.add.image(54, 98, "pearlGold").setScale(0.28).setDepth(9);
-    this.pearlText = this.add.text(84, 82, "0", hudTextStyle(24, "#ffd43f"));
-    this.lifeBubbles = [0, 1, 2].map((index) => {
-      const bubble = this.add.circle(63 + index * 38, 134, 13, 0x9df6ff, 0.86);
-      bubble.setStrokeStyle(3, 0xffffff, 0.42);
-      bubble.setDepth(9);
-      return bubble;
-    });
-    this.actionText = this.add.text(370, 38, "SPRINGEN | TAUCHEN | DRIFTEN", hudTextStyle(22, "#9df6ff"));
-    this.comboText = this.add.text(GAME_WIDTH - 330, 118, "", hudTextStyle(26, "#ffd43f")).setOrigin(1, 0.5);
-    this.powerStatusTexts = {
-      shield: this.add.text(776, 34, "", hudTextStyle(20, "#9df6ff")).setOrigin(0, 0.5).setDepth(9),
-      magnet: this.add.text(888, 34, "", hudTextStyle(20, "#ffd43f")).setOrigin(0, 0.5).setDepth(9),
-      turbo: this.add.text(1008, 34, "", hudTextStyle(20, "#ff70ad")).setOrigin(0, 0.5).setDepth(9),
+    this.lifeHud = makeLifePill(this, 24, 24);
+    this.scoreHud = makeHudPill(this, 180, 24, 198, "pearlGold", 0.34, "#ffffff");
+    this.scoreText = this.scoreHud.text;
+    this.pearlHud = makeHudPill(this, 398, 24, 152, "pearlPink", 0.3, "#ffd43f");
+    this.pearlText = this.pearlHud.text;
+    this.lifeBubbles = this.lifeHud.hearts;
+    this.comboText = this.add.text(GAME_WIDTH / 2, 120, "", hudTextStyle(26, "#ffd43f")).setOrigin(0.5).setDepth(21);
+    this.specialSlots = {
+      shield: makeSpecialSlot(this, 788, 28, "powerupShieldV2", "SCHILD", "#9df6ff"),
+      magnet: makeSpecialSlot(this, 888, 28, "powerupMagnetV2", "MAGNET", "#ffd43f"),
+      turbo: makeSpecialSlot(this, 988, 28, "powerupTurboV2", "TURBO", "#ff70ad"),
+      bomb: makeSpecialSlot(this, 1088, 28, "quackBombV2", "BOMBE", "#ffd43f"),
     };
-    this.tweens.add({
-      targets: this.actionText,
-      alpha: 0.42,
-      delay: 6200,
-      duration: 800,
-      ease: "Sine.inOut",
-    });
 
-    this.pauseButton = makeRoundButton(this, GAME_WIDTH - 70, 64, "II");
+    this.pauseButton = makePauseIconButton(this, HUD_PAUSE_X, HUD_PAUSE_Y);
 
     this.quipText = this.add
-      .text(GAME_WIDTH / 2, 104, "", {
+      .text(GAME_WIDTH / 2, 156, "", {
         fontFamily: "Trebuchet MS",
         fontSize: "32px",
         fontStyle: "900",
@@ -554,7 +541,7 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      if (isWithinRoundButton(pointer, GAME_WIDTH - 70, 64)) {
+      if (isWithinRoundButton(pointer, HUD_PAUSE_X, HUD_PAUSE_Y)) {
         this.togglePause();
         return;
       }
@@ -1282,6 +1269,7 @@ class GameScene extends Phaser.Scene {
   }
 
   activateQuackBomb() {
+    this.bombFlashUntil = this.time.now + 1100;
     this.score += 35;
     this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
     this.cameras.main.shake(120, 0.006);
@@ -1750,12 +1738,8 @@ class GameScene extends Phaser.Scene {
     this.lifeBubbles.forEach((bubble, index) => {
       const alive = index < this.lives;
       bubble.setAlpha(alive ? 0.86 : 0.2);
-      bubble.setScale(alive ? (index < this.shieldCharges ? 1.18 : 1) : 0.78);
-      if (index < this.shieldCharges) {
-        bubble.setFillStyle(0xeaffff, 0.92);
-      } else {
-        bubble.setFillStyle(0x9df6ff, 0.86);
-      }
+      bubble.setScale(alive ? 1 : 0.78);
+      setHeartIconColor(bubble, index < this.shieldCharges ? 0x9df6ff : 0xff3f76);
     });
     this.updatePowerHud();
   }
@@ -1763,9 +1747,10 @@ class GameScene extends Phaser.Scene {
   updatePowerHud() {
     const magnetSeconds = Math.ceil(Math.max(0, this.magnetUntil - this.time.now) / 1000);
     const turboSeconds = Math.ceil(Math.max(0, this.turboUntil - this.time.now) / 1000);
-    this.powerStatusTexts.shield.setText(this.shieldCharges > 0 ? `S x${this.shieldCharges}` : "");
-    this.powerStatusTexts.magnet.setText(magnetSeconds > 0 ? `M ${magnetSeconds}s` : "");
-    this.powerStatusTexts.turbo.setText(turboSeconds > 0 ? `T ${turboSeconds}s` : "");
+    updateSpecialSlot(this.specialSlots.shield, this.shieldCharges > 0 ? `${this.shieldCharges}` : "", this.shieldCharges > 0);
+    updateSpecialSlot(this.specialSlots.magnet, magnetSeconds > 0 ? `${magnetSeconds}s` : "", magnetSeconds > 0);
+    updateSpecialSlot(this.specialSlots.turbo, turboSeconds > 0 ? `${turboSeconds}s` : "", turboSeconds > 0);
+    updateSpecialSlot(this.specialSlots.bomb, this.time.now < this.bombFlashUntil ? "!" : "", this.time.now < this.bombFlashUntil);
   }
 
   expireCombo() {
@@ -2502,6 +2487,127 @@ function addWaterGlints(scene, depth) {
       ease: "Sine.inOut",
     });
   }
+}
+
+function makeHudPill(scene, x, y, width, iconKey, iconScale, color) {
+  const container = scene.add.container(x, y).setDepth(20);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x0b62c9, 0.94);
+  bg.fillRoundedRect(0, 0, width, 56, 22);
+  bg.lineStyle(4, 0xffffff, 0.64);
+  bg.strokeRoundedRect(0, 0, width, 56, 22);
+
+  const shine = scene.add.rectangle(18, 9, width - 36, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
+  const icon = scene.add.image(34, 28, iconKey).setScale(iconScale);
+  const text = scene.add.text(66, 28, "0", hudTextStyle(28, color)).setOrigin(0, 0.5);
+  container.add([bg, shine, icon, text]);
+  return { container, text };
+}
+
+function makeLifePill(scene, x, y) {
+  const container = scene.add.container(x, y).setDepth(20);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x0b62c9, 0.94);
+  bg.fillRoundedRect(0, 0, 136, 56, 22);
+  bg.lineStyle(4, 0xffffff, 0.64);
+  bg.strokeRoundedRect(0, 0, 136, 56, 22);
+
+  const shine = scene.add.rectangle(18, 9, 100, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
+  const hearts = [0, 1, 2].map((index) => makeHeartIcon(scene, 32 + index * 34, 28, 0xff3f76));
+  container.add([bg, shine, ...hearts]);
+  return { container, hearts };
+}
+
+function makeHeartIcon(scene, x, y, color) {
+  const heart = scene.add.graphics();
+  heart.x = x;
+  heart.y = y;
+  heart.setData("heartColor", color);
+  drawHeartIcon(heart, color);
+  return heart;
+}
+
+function setHeartIconColor(heart, color) {
+  if (heart.getData("heartColor") === color) {
+    return;
+  }
+
+  heart.setData("heartColor", color);
+  drawHeartIcon(heart, color);
+}
+
+function drawHeartIcon(graphic, color) {
+  graphic.clear();
+  graphic.fillStyle(color, 1);
+  graphic.lineStyle(3, 0xffffff, 0.78);
+  graphic.beginPath();
+  graphic.moveTo(0, 18);
+  graphic.bezierCurveTo(-31, -4, -18, -28, 0, -13);
+  graphic.bezierCurveTo(18, -28, 31, -4, 0, 18);
+  graphic.closePath();
+  graphic.fillPath();
+  graphic.strokePath();
+}
+
+function makeSpecialSlot(scene, x, y, iconKey, label, color) {
+  const container = scene.add.container(x, y).setDepth(20);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x0b62c9, 0.9);
+  bg.fillCircle(34, 34, 34);
+  bg.lineStyle(4, 0xffffff, 0.72);
+  bg.strokeCircle(34, 34, 34);
+
+  const glow = scene.add.circle(34, 34, 38, hexColorToNumber(color), 0.12);
+  const icon = scene.add.image(34, 32, iconKey).setScale(0.28);
+  const labelText = scene.add.text(34, 78, label, hudTextStyle(14, "#ffffff")).setOrigin(0.5);
+
+  const badge = scene.add.container(62, 58);
+  const badgeBg = scene.add.circle(0, 0, 15, 0xff3f9a, 1);
+  badgeBg.setStrokeStyle(3, 0xffffff, 0.72);
+  const badgeText = scene.add.text(0, 0, "", hudTextStyle(15, "#ffffff")).setOrigin(0.5);
+  badge.add([badgeBg, badgeText]);
+  badge.setVisible(false);
+
+  container.add([glow, bg, icon, labelText, badge]);
+  container.setAlpha(0.64);
+  return { container, glow, icon, labelText, badge, badgeText };
+}
+
+function updateSpecialSlot(slot, badgeValue, active) {
+  if (!slot) {
+    return;
+  }
+
+  slot.container.setAlpha(active ? 1 : 0.58);
+  slot.container.setScale(active ? 1.06 : 1);
+  slot.glow.setAlpha(active ? 0.3 : 0.1);
+  slot.icon.setAlpha(active ? 1 : 0.68);
+  slot.labelText.setAlpha(active ? 1 : 0.68);
+  slot.badge.setVisible(Boolean(badgeValue));
+  slot.badgeText.setText(badgeValue);
+}
+
+function hexColorToNumber(color) {
+  return Number.parseInt(color.replace("#", ""), 16);
+}
+
+function makePauseIconButton(scene, x, y) {
+  const container = scene.add.container(x, y);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x2f8ed8, 0.95);
+  bg.fillRoundedRect(-34, -34, 68, 68, 18);
+  bg.lineStyle(4, 0xffffff, 0.66);
+  bg.strokeRoundedRect(-34, -34, 68, 68, 18);
+  const leftBar = scene.add.rectangle(-9, 0, 9, 34, 0xffffff, 0.96);
+  const rightBar = scene.add.rectangle(10, 0, 9, 34, 0xffffff, 0.96);
+  leftBar.setStrokeStyle(2, 0x123044, 0.32);
+  rightBar.setStrokeStyle(2, 0x123044, 0.32);
+  container.add([bg, leftBar, rightBar]);
+  container.setSize(68, 68);
+  container.setInteractive(new Phaser.Geom.Rectangle(-34, -34, 68, 68), Phaser.Geom.Rectangle.Contains);
+  container.input.cursor = "pointer";
+  container.setDepth(20);
+  return container;
 }
 
 function makeButton(scene, x, y, label) {
