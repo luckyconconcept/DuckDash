@@ -2,6 +2,7 @@ const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const WATERLINE = 560;
 const STORAGE_KEY = "duck-dash-stats";
+const COLLECTIBLE_LANES = [430, 400, 368];
 
 const QUIPS = [
   "QUAK!",
@@ -44,10 +45,20 @@ class MenuScene extends Phaser.Scene {
     addBackground(this);
     addWaterOverlay(this);
 
-    this.add.image(GAME_WIDTH / 2, 180, "logo").setScale(1.05);
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x06253d, 0.24);
+    shade.setDepth(1);
+
+    const card = this.add.graphics();
+    card.setDepth(2);
+    card.fillStyle(0x0a3a5d, 0.54);
+    card.fillRoundedRect(360, 42, 560, 626, 28);
+    card.lineStyle(4, 0x80f2ff, 0.46);
+    card.strokeRoundedRect(360, 42, 560, 626, 28);
+
+    this.add.image(GAME_WIDTH / 2, 170, "logo").setScale(1.02).setDepth(3);
 
     this.add
-      .text(GAME_WIDTH / 2, 330, "Das Badezimmer ist voll. Die Ente muss durch.", {
+      .text(GAME_WIDTH / 2, 318, "Das Badezimmer ist voll. Die Ente muss durch.", {
         fontFamily: "Trebuchet MS",
         fontSize: "30px",
         fontStyle: "700",
@@ -55,10 +66,11 @@ class MenuScene extends Phaser.Scene {
         stroke: "#123044",
         strokeThickness: 6,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
 
     this.highscoreText = this.add
-      .text(GAME_WIDTH / 2, 394, `Highscore ${this.stats.highscore}`, {
+      .text(GAME_WIDTH / 2, 374, `Highscore ${this.stats.highscore}`, {
         fontFamily: "Trebuchet MS",
         fontSize: "28px",
         fontStyle: "700",
@@ -66,12 +78,15 @@ class MenuScene extends Phaser.Scene {
         stroke: "#123044",
         strokeThickness: 5,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
 
-    this.duck = this.add.image(GAME_WIDTH / 2, 520, "duck").setScale(0.82);
+    this.add.image(GAME_WIDTH / 2 - 142, 472, "pearlPink").setScale(0.56).setDepth(3);
+    this.add.image(GAME_WIDTH / 2 + 148, 462, "pearlBlue").setScale(0.56).setDepth(3);
+    this.duck = this.add.image(GAME_WIDTH / 2, 500, "duck").setScale(0.84).setDepth(4);
     this.tweens.add({
       targets: this.duck,
-      y: 500,
+      y: 484,
       angle: -4,
       yoyo: true,
       repeat: -1,
@@ -79,11 +94,12 @@ class MenuScene extends Phaser.Scene {
       ease: "Sine.inOut",
     });
 
-    const startButton = makeButton(this, GAME_WIDTH / 2, 606, "START");
+    const startButton = makeButton(this, GAME_WIDTH / 2, 598, "START");
+    startButton.setDepth(5);
     startButton.on("pointerdown", () => this.scene.start("GameScene"));
 
     this.add
-      .text(GAME_WIDTH / 2, 674, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen", {
+      .text(GAME_WIDTH / 2, 666, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen", {
         fontFamily: "Trebuchet MS",
         fontSize: "22px",
         fontStyle: "700",
@@ -92,7 +108,8 @@ class MenuScene extends Phaser.Scene {
         strokeThickness: 4,
         align: "center",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(3);
 
     this.input.keyboard.once("keydown-SPACE", () => this.scene.start("GameScene"));
   }
@@ -108,13 +125,15 @@ class GameScene extends Phaser.Scene {
     this.score = 0;
     this.runTime = 0;
     this.pearls = 0;
+    this.lives = 3;
     this.lastMilestone = 0;
-    this.speed = 340;
-    this.spawnDelay = 1450;
-    this.collectDelay = 1150;
+    this.speed = 300;
+    this.spawnDelay = 1700;
+    this.collectDelay = 980;
     this.lastGroundedAt = 0;
     this.isGameOver = false;
     this.isPaused = false;
+    this.invulnerableUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
@@ -154,8 +173,8 @@ class GameScene extends Phaser.Scene {
 
     this.duck = this.physics.add.sprite(220, WATERLINE - 80, "duck");
     this.duck.setScale(0.52);
-    this.duck.body.setSize(145, 116);
-    this.duck.body.setOffset(45, 82);
+    this.duck.body.setSize(120, 92);
+    this.duck.body.setOffset(58, 100);
     this.duck.setCollideWorldBounds(true);
     this.duck.setGravityY(1320);
     this.duck.setDepth(8);
@@ -190,12 +209,13 @@ class GameScene extends Phaser.Scene {
   createHud() {
     const panel = this.add.graphics();
     panel.fillStyle(0x062941, 0.54);
-    panel.fillRoundedRect(24, 22, 310, 102, 18);
+    panel.fillRoundedRect(24, 22, 310, 132, 18);
     panel.lineStyle(2, 0x71f1ff, 0.34);
-    panel.strokeRoundedRect(24, 22, 310, 102, 18);
+    panel.strokeRoundedRect(24, 22, 310, 132, 18);
 
     this.scoreText = this.add.text(48, 38, "0", hudTextStyle(34, "#ffffff"));
     this.pearlText = this.add.text(50, 82, "Perlen 0", hudTextStyle(24, "#ffd43f"));
+    this.livesText = this.add.text(50, 116, "Schaum 3", hudTextStyle(22, "#9df6ff"));
 
     this.pauseButton = makeRoundButton(this, GAME_WIDTH - 70, 64, "II");
     this.pauseButton.on("pointerdown", () => this.togglePause());
@@ -255,7 +275,7 @@ class GameScene extends Phaser.Scene {
     const deltaSeconds = delta / 1000;
     this.runTime += deltaSeconds;
     this.score += deltaSeconds * 12;
-    this.speed = 340 + Math.min(360, this.runTime * 8);
+    this.speed = 300 + Math.min(280, this.runTime * 6);
     if (this.duck.body.blocked.down) {
       this.lastGroundedAt = this.time.now;
     }
@@ -264,7 +284,9 @@ class GameScene extends Phaser.Scene {
 
     this.scoreText.setText(Math.floor(this.score).toLocaleString("de-DE"));
     this.pearlText.setText(`Perlen ${this.pearls}`);
+    this.livesText.setText(`Schaum ${this.lives}`);
     this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
+    this.pullNearbyCollectibles();
 
     if (this.score >= this.lastMilestone + 500) {
       this.lastMilestone += 500;
@@ -284,7 +306,7 @@ class GameScene extends Phaser.Scene {
     }
 
     if (this.duck.body.blocked.down || this.time.now - this.lastGroundedAt < 130) {
-      this.duck.setVelocityY(-640);
+      this.duck.setVelocityY(-720);
       this.splash(this.duck.x - 48, this.duck.y + 42);
     }
   }
@@ -304,9 +326,9 @@ class GameScene extends Phaser.Scene {
     }
 
     const options = [
-      { key: "soap", y: WATERLINE - 50, scale: 0.68, speedBoost: 18, body: [170, 74, 42, 34], gap: 520 },
-      { key: "toothbrush", y: WATERLINE - 80, scale: 0.55, speedBoost: 32, body: [245, 66, 48, 92], gap: 600 },
-      { key: "whirlpool", y: WATERLINE - 42, scale: 0.62, speedBoost: 44, body: [220, 98, 50, 60], gap: 640 },
+      { key: "soap", y: WATERLINE - 30, scale: 0.6, speedBoost: 10, body: [132, 44, 64, 62], gap: 660 },
+      { key: "toothbrush", y: WATERLINE - 56, scale: 0.5, speedBoost: 18, body: [190, 42, 78, 110], gap: 720 },
+      { key: "whirlpool", y: WATERLINE - 24, scale: 0.54, speedBoost: 24, body: [158, 62, 82, 88], gap: 740 },
     ];
     const allowed = this.runTime < 24 ? options.slice(0, 2) : options;
     const pick = Phaser.Utils.Array.GetRandom(allowed);
@@ -341,12 +363,13 @@ class GameScene extends Phaser.Scene {
     const roll = Phaser.Math.Between(1, 100);
     const key = roll > 84 ? "pearlGold" : roll > 48 ? "pearlBlue" : "pearlPink";
     const value = key === "pearlGold" ? 50 : 10;
-    const safeLane = this.hasObstacleGap(440) ? Phaser.Math.Between(260, 475) : Phaser.Math.Between(250, 360);
+    const safeLane = Phaser.Utils.Array.GetRandom(COLLECTIBLE_LANES);
     const pearl = this.collectibles.create(GAME_WIDTH + 100, safeLane, key);
 
-    pearl.setScale(key === "pearlGold" ? 0.62 : 0.56);
-    pearl.body.setCircle(38);
-    pearl.setVelocityX(-this.speed * 0.88);
+    pearl.setScale(key === "pearlGold" ? 0.58 : 0.52);
+    pearl.body.setCircle(54);
+    pearl.body.setOffset(-6, -6);
+    pearl.setVelocityX(-this.speed * 0.78);
     pearl.setDepth(6);
     pearl.setData("value", value);
     pearl.setData("cleanup", true);
@@ -386,9 +409,15 @@ class GameScene extends Phaser.Scene {
   }
 
   collectPearl(_, pearl) {
+    if (!pearl.active) {
+      return;
+    }
+
     this.score += pearl.getData("value");
     this.pearls += 1;
     this.splash(pearl.x, pearl.y);
+    pearl.setActive(false);
+    pearl.body.enable = false;
     this.tweens.add({
       targets: pearl,
       scale: pearl.scale * 1.8,
@@ -445,8 +474,43 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  handleHit() {
-    if (this.isGameOver) {
+  handleHit(_, obstacle) {
+    if (this.isGameOver || this.time.now < this.invulnerableUntil) {
+      return;
+    }
+
+    this.lives -= 1;
+    this.invulnerableUntil = this.time.now + 1350;
+    this.cameras.main.shake(150, 0.007);
+
+    if (obstacle?.active) {
+      obstacle.body.enable = false;
+      this.tweens.add({
+        targets: obstacle,
+        x: obstacle.x + 150,
+        y: obstacle.y - 52,
+        angle: obstacle.angle + 35,
+        alpha: 0,
+        duration: 260,
+        ease: "Back.in",
+        onComplete: () => obstacle.destroy(),
+      });
+    }
+
+    if (this.lives > 0) {
+      this.duck.setTint(0x9df6ff);
+      this.showFloatingText("SCHAUMSCHILD!", this.duck.x + 170, this.duck.y - 110, "#9df6ff");
+      this.tweens.add({
+        targets: this.duck,
+        alpha: 0.44,
+        yoyo: true,
+        repeat: 5,
+        duration: 110,
+        onComplete: () => {
+          this.duck.clearTint();
+          this.duck.setAlpha(1);
+        },
+      });
       return;
     }
 
@@ -512,21 +576,42 @@ class GameScene extends Phaser.Scene {
     this.splashEmitter.emitParticleAt(x, y, 16);
   }
 
+  pullNearbyCollectibles() {
+    this.collectibles.getChildren().forEach((pearl) => {
+      if (!pearl.active || pearl.x < this.duck.x - 40) {
+        return;
+      }
+
+      const distance = Phaser.Math.Distance.Between(this.duck.x, this.duck.y, pearl.x, pearl.y);
+      if (distance > 210) {
+        return;
+      }
+
+      pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 22, 0.045);
+      pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 8, 0.045);
+      pearl.setVelocityX(Math.min(pearl.body.velocity.x, -this.speed * 0.42));
+
+      if (distance < 76) {
+        this.collectPearl(this.duck, pearl);
+      }
+    });
+  }
+
   hasObstacleGap(requiredGap) {
     return !this.obstacles.getChildren().some((obstacle) => obstacle.active && obstacle.x > GAME_WIDTH - requiredGap);
   }
 
   getObstacleDelay() {
     if (this.runTime > 95) {
-      return 920;
+      return 1080;
     }
     if (this.runTime > 55) {
-      return 1060;
+      return 1250;
     }
     if (this.runTime > 25) {
-      return 1240;
+      return 1450;
     }
-    return 1450;
+    return 1700;
   }
 
   showFloatingText(message, x, y, color) {
