@@ -134,6 +134,8 @@ class GameScene extends Phaser.Scene {
     this.isGameOver = false;
     this.isPaused = false;
     this.invulnerableUntil = 0;
+    this.isDiving = false;
+    this.diveUntil = 0;
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
@@ -173,8 +175,7 @@ class GameScene extends Phaser.Scene {
 
     this.duck = this.physics.add.sprite(220, WATERLINE - 80, "duck");
     this.duck.setScale(0.52);
-    this.duck.body.setSize(120, 92);
-    this.duck.body.setOffset(58, 100);
+    this.setDuckNormalBody();
     this.duck.setCollideWorldBounds(true);
     this.duck.setGravityY(1320);
     this.duck.setDepth(8);
@@ -216,6 +217,7 @@ class GameScene extends Phaser.Scene {
     this.scoreText = this.add.text(48, 38, "0", hudTextStyle(34, "#ffffff"));
     this.pearlText = this.add.text(50, 82, "Perlen 0", hudTextStyle(24, "#ffd43f"));
     this.livesText = this.add.text(50, 116, "Schaum 3", hudTextStyle(22, "#9df6ff"));
+    this.actionText = this.add.text(370, 38, "Spring auf Seife · Tauch unter Zahnbuersten", hudTextStyle(22, "#9df6ff"));
 
     this.pauseButton = makeRoundButton(this, GAME_WIDTH - 70, 64, "II");
     this.pauseButton.on("pointerdown", () => this.togglePause());
@@ -285,8 +287,12 @@ class GameScene extends Phaser.Scene {
     this.scoreText.setText(Math.floor(this.score).toLocaleString("de-DE"));
     this.pearlText.setText(`Perlen ${this.pearls}`);
     this.livesText.setText(`Schaum ${this.lives}`);
+    this.updateDiveState();
+    if (!this.isDiving) {
     this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
+    }
     this.pullNearbyCollectibles();
+    this.updateObstacleLabels();
 
     if (this.score >= this.lastMilestone + 500) {
       this.lastMilestone += 500;
@@ -295,6 +301,7 @@ class GameScene extends Phaser.Scene {
 
     this.children.each((child) => {
       if (child.active && child.x < -180 && child.getData("cleanup")) {
+        child.getData("label")?.destroy();
         child.destroy();
       }
     });
@@ -316,8 +323,15 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.isDiving = true;
+    this.diveUntil = this.time.now + 760;
     this.duck.setVelocityY(760);
-    this.duck.setAngle(18);
+    this.duck.setAngle(16);
+    this.duck.setTint(0x9df6ff);
+    this.duck.setAlpha(0.78);
+    this.duck.body.setSize(108, 52);
+    this.duck.body.setOffset(66, 132);
+    this.splash(this.duck.x - 38, this.duck.y + 48);
   }
 
   spawnObstacle() {
@@ -326,9 +340,36 @@ class GameScene extends Phaser.Scene {
     }
 
     const options = [
-      { key: "soap", y: WATERLINE - 30, scale: 0.6, speedBoost: 10, body: [132, 44, 64, 62], gap: 660 },
-      { key: "toothbrush", y: WATERLINE - 56, scale: 0.5, speedBoost: 18, body: [190, 42, 78, 110], gap: 720 },
-      { key: "whirlpool", y: WATERLINE - 24, scale: 0.54, speedBoost: 24, body: [158, 62, 82, 88], gap: 740 },
+      {
+        key: "soap",
+        y: WATERLINE - 24,
+        scale: 0.6,
+        speedBoost: 10,
+        body: [128, 38, 66, 68],
+        gap: 660,
+        mode: "stomp",
+        prompt: "DRAUF!",
+      },
+      {
+        key: "toothbrush",
+        y: WATERLINE - 134,
+        scale: 0.5,
+        speedBoost: 18,
+        body: [206, 46, 70, 88],
+        gap: 760,
+        mode: "dive",
+        prompt: "TAUCH!",
+      },
+      {
+        key: "whirlpool",
+        y: WATERLINE - 18,
+        scale: 0.54,
+        speedBoost: 24,
+        body: [150, 56, 86, 94],
+        gap: 760,
+        mode: "stomp",
+        prompt: "DRAUF!",
+      },
     ];
     const allowed = this.runTime < 24 ? options.slice(0, 2) : options;
     const pick = Phaser.Utils.Array.GetRandom(allowed);
@@ -344,6 +385,14 @@ class GameScene extends Phaser.Scene {
     obstacle.setVelocityX(-this.speed - pick.speedBoost);
     obstacle.setDepth(7);
     obstacle.setData("cleanup", true);
+    obstacle.setData("mode", pick.mode);
+    obstacle.setData("prompt", pick.prompt);
+
+    const label = this.add.text(obstacle.x, obstacle.y - 88, pick.prompt, hudTextStyle(20, pick.mode === "dive" ? "#9df6ff" : "#ffd43f"));
+    label.setOrigin(0.5);
+    label.setDepth(9);
+    label.setData("cleanup", true);
+    obstacle.setData("label", label);
 
     this.tweens.add({
       targets: obstacle,
@@ -457,6 +506,7 @@ class GameScene extends Phaser.Scene {
 
       cleared += 1;
       obstacle.body.enable = false;
+      obstacle.getData("label")?.destroy();
       this.tweens.add({
         targets: obstacle,
         x: obstacle.x + 210,
@@ -479,12 +529,23 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    const mode = obstacle.getData("mode");
+    if (mode === "dive" && this.isDiving) {
+      return;
+    }
+
+    if (mode === "stomp" && this.canStomp(obstacle)) {
+      this.stompObstacle(obstacle);
+      return;
+    }
+
     this.lives -= 1;
     this.invulnerableUntil = this.time.now + 1350;
     this.cameras.main.shake(150, 0.007);
 
     if (obstacle?.active) {
       obstacle.body.enable = false;
+      obstacle.getData("label")?.destroy();
       this.tweens.add({
         targets: obstacle,
         x: obstacle.x + 150,
@@ -574,6 +635,60 @@ class GameScene extends Phaser.Scene {
 
   splash(x, y) {
     this.splashEmitter.emitParticleAt(x, y, 16);
+  }
+
+  setDuckNormalBody() {
+    this.duck.body.setSize(120, 92);
+    this.duck.body.setOffset(58, 100);
+  }
+
+  updateDiveState() {
+    if (!this.isDiving || this.time.now < this.diveUntil) {
+      return;
+    }
+
+    this.isDiving = false;
+    this.setDuckNormalBody();
+    this.duck.setAlpha(1);
+    if (this.time.now >= this.invulnerableUntil) {
+      this.duck.clearTint();
+    }
+  }
+
+  canStomp(obstacle) {
+    return !this.isDiving && this.duck.body.velocity.y > 80 && this.duck.y < obstacle.y - 26;
+  }
+
+  stompObstacle(obstacle) {
+    obstacle.body.enable = false;
+    obstacle.getData("label")?.destroy();
+    this.score += obstacle.getData("mode") === "stomp" ? 35 : 20;
+    this.duck.setVelocityY(-520);
+    this.splash(obstacle.x, obstacle.y);
+    this.showFloatingText("PLATSCH!", obstacle.x, obstacle.y - 90, "#ffd43f");
+
+    this.tweens.add({
+      targets: obstacle,
+      y: obstacle.y + 42,
+      scaleX: obstacle.scaleX * 1.2,
+      scaleY: obstacle.scaleY * 0.42,
+      alpha: 0,
+      duration: 240,
+      ease: "Back.in",
+      onComplete: () => obstacle.destroy(),
+    });
+  }
+
+  updateObstacleLabels() {
+    this.obstacles.getChildren().forEach((obstacle) => {
+      const label = obstacle.getData("label");
+      if (!label?.active) {
+        return;
+      }
+
+      label.setPosition(obstacle.x, obstacle.y - (obstacle.getData("mode") === "dive" ? 74 : 88));
+      label.setAlpha(Phaser.Math.Clamp((obstacle.x - 250) / 280, 0, 1));
+    });
   }
 
   pullNearbyCollectibles() {
