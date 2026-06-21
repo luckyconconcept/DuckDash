@@ -247,6 +247,11 @@ class GameScene extends Phaser.Scene {
     this.touchStartX = 0;
     this.touchStartY = 0;
     this.touchSwipeHandled = false;
+    this.touchDriftDirection = 0;
+    this.touchDriftActive = false;
+    this.activeTouchPointerId = null;
+    this.lastDriftInputAt = 0;
+    this.lastDriftBubbleAt = 0;
     this.obstaclePattern = [];
     this.rewardTrailId = 0;
     this.cupBrushIntroduced = false;
@@ -334,7 +339,7 @@ class GameScene extends Phaser.Scene {
       bubble.setDepth(9);
       return bubble;
     });
-    this.actionText = this.add.text(370, 38, "DRUEBER, DRAUF oder UNTERtauchen", hudTextStyle(22, "#9df6ff"));
+    this.actionText = this.add.text(370, 38, "DRUEBER, DRAUF, DRIFTEN oder TAUCHEN", hudTextStyle(22, "#9df6ff"));
     this.comboText = this.add.text(GAME_WIDTH - 330, 118, "", hudTextStyle(26, "#ffd43f")).setOrigin(1, 0.5);
     this.tweens.add({
       targets: this.actionText,
@@ -373,32 +378,61 @@ class GameScene extends Phaser.Scene {
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
       this.touchSwipeHandled = false;
+      this.touchDriftDirection = 0;
+      this.touchDriftActive = false;
+      this.activeTouchPointerId = pointer.id;
     });
 
     this.input.on("pointermove", (pointer) => {
-      if (this.touchSwipeHandled || !pointer.isDown) {
+      if (!pointer.isDown || pointer.id !== this.activeTouchPointerId) {
         return;
       }
 
+      const deltaX = pointer.x - this.touchStartX;
       const deltaY = pointer.y - this.touchStartY;
-      if (deltaY > 52) {
+      if (!this.touchSwipeHandled && !this.touchDriftActive && deltaY > 72 && Math.abs(deltaX) < 48) {
         this.touchSwipeHandled = true;
+        this.touchDriftDirection = 0;
+        this.touchDriftActive = false;
         this.dive(true);
+        return;
+      }
+
+      if (!this.touchSwipeHandled && Math.abs(deltaX) > 42 && Math.abs(deltaY) < 64) {
+        this.touchDriftDirection = Math.sign(deltaX);
+        this.touchDriftActive = true;
+        this.lastDriftInputAt = this.time.now;
       }
     });
 
     this.input.on("pointerup", (pointer) => {
+      if (pointer.id !== this.activeTouchPointerId) {
+        return;
+      }
+
       const deltaX = Math.abs(pointer.x - this.touchStartX);
       const deltaY = pointer.y - this.touchStartY;
       if (this.touchSwipeHandled) {
         this.releaseDive();
+        this.resetTouchDrift();
         return;
       }
 
-      if (!this.touchSwipeHandled && deltaY < 42 && deltaX < 54) {
+      if (!this.touchDriftActive && !this.touchSwipeHandled && deltaY < 42 && deltaX < 54) {
         this.jump();
       }
+
+      this.resetTouchDrift();
     });
+
+    this.input.on("pointerupoutside", () => this.resetTouchDrift());
+    this.input.on("pointercancel", () => this.resetTouchDrift());
+  }
+
+  resetTouchDrift() {
+    this.touchDriftDirection = 0;
+    this.touchDriftActive = false;
+    this.activeTouchPointerId = null;
   }
 
   update(_, delta) {
@@ -737,7 +771,17 @@ class GameScene extends Phaser.Scene {
     this.score += value;
     this.pearls += 1;
     SoundFX.collect();
-    this.addCombo(value >= 50 ? 2 : 1, value >= 50 ? "GOLDPERLE!" : "PERLE!", pearl.x, pearl.y - 50, "#ffd43f");
+    const driftBonus = this.getDriftBonus();
+    if (driftBonus > 0) {
+      this.score += driftBonus;
+    }
+    this.addCombo(
+      (value >= 50 ? 2 : 1) + (driftBonus > 0 ? 1 : 0),
+      driftBonus > 0 ? `SAUBERE LINIE! +${driftBonus}` : value >= 50 ? "GOLDPERLE!" : "PERLE!",
+      pearl.x,
+      pearl.y - 50,
+      driftBonus > 0 ? "#9df6ff" : "#ffd43f",
+    );
     this.burst(pearl.x, pearl.y, [pearl.texture.key], value >= 50 ? 14 : 9, value >= 50 ? 0.18 : 0.12, value >= 50 ? 86 : 62);
     this.splash(pearl.x, pearl.y);
     pearl.setActive(false);
@@ -1034,8 +1078,8 @@ class GameScene extends Phaser.Scene {
   }
 
   updateHorizontalControl(deltaSeconds) {
-    const movingLeft = this.cursors.left?.isDown || this.wasd.A?.isDown;
-    const movingRight = this.cursors.right?.isDown || this.wasd.D?.isDown;
+    const movingLeft = this.cursors.left?.isDown || this.wasd.A?.isDown || this.touchDriftDirection < 0;
+    const movingRight = this.cursors.right?.isDown || this.wasd.D?.isDown || this.touchDriftDirection > 0;
     let targetX = DUCK_HOME_X;
 
     if (movingLeft && !movingRight) {
@@ -1050,8 +1094,44 @@ class GameScene extends Phaser.Scene {
 
     if ((movingLeft || movingRight) && !this.isDiving) {
       const lean = movingLeft ? -7 : 7;
+      this.lastDriftInputAt = this.time.now;
       this.duck.setAngle(Phaser.Math.Linear(this.duck.angle, lean, Math.min(1, deltaSeconds * 10)));
+      this.emitDriftBubble();
     }
+  }
+
+  getDriftBonus() {
+    if (this.isDiving || this.time.now - this.lastDriftInputAt > 260) {
+      return 0;
+    }
+
+    const offset = Math.abs(this.duck.x - DUCK_HOME_X);
+    if (offset > 74) {
+      return 8;
+    }
+    if (offset > 38) {
+      return 4;
+    }
+    return 0;
+  }
+
+  emitDriftBubble() {
+    if (this.time.now < this.lastDriftBubbleAt + 120) {
+      return;
+    }
+
+    this.lastDriftBubbleAt = this.time.now;
+    const bubble = this.add.image(this.duck.x - 62, this.duck.y + 42, "pearlBlue").setScale(0.08).setAlpha(0.42).setDepth(6);
+    this.tweens.add({
+      targets: bubble,
+      x: bubble.x - Phaser.Math.Between(18, 42),
+      y: bubble.y - Phaser.Math.Between(8, 30),
+      alpha: 0,
+      scale: 0,
+      duration: 360,
+      ease: "Cubic.out",
+      onComplete: () => bubble.destroy(),
+    });
   }
 
   rewardPassedJumpObstacles() {
