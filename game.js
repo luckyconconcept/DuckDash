@@ -110,10 +110,14 @@ class BootScene extends Phaser.Scene {
     this.load.image("pearlGold", "assets/pearl_gold.png");
     this.load.image("shellPearl", "assets/shell_pearl.png?v=20260621-assets3");
     this.load.image("starfishBonus", "assets/starfish_bonus.png?v=20260621-assets3");
+    this.load.image("underwaterPearls", "assets/underwater_pearls.png?v=20260621-underwater1");
     this.load.image("quackBomb", "assets/quack_bomb.png");
     this.load.image("quackBombV2", "assets/quack_bomb_v2.png?v=20260621-assets3");
     this.load.image("cupBrush", "assets/cup_brush.png");
     this.load.image("cupBrushV2", "assets/cup_brush_v2.png?v=20260621-assets3");
+    this.load.image("underwaterCap", "assets/underwater_cap.png?v=20260621-underwater1");
+    this.load.image("drainPlug", "assets/drain_plug.png?v=20260621-underwater1");
+    this.load.image("waterCurrent", "assets/water_current.png?v=20260621-underwater1");
     this.load.image("powerupMagnet", "assets/powerup_magnet.png");
     this.load.image("powerupShield", "assets/powerup_shield.png");
     this.load.image("powerupTurbo", "assets/powerup_turbo.png");
@@ -879,6 +883,28 @@ class GameScene extends Phaser.Scene {
         mode: "stomp",
         prompt: "DRAUF!",
       },
+      {
+        key: "underwaterCap",
+        y: WATERLINE + 70,
+        scale: 0.31,
+        speedBoost: 12,
+        body: [253, 131, 185, 228],
+        gap: 780,
+        mode: "underwater",
+        prompt: "OBEN BLEIBEN!",
+        labelOffset: 142,
+      },
+      {
+        key: "drainPlug",
+        y: WATERLINE + 92,
+        scale: 0.27,
+        speedBoost: 18,
+        body: [276, 148, 184, 232],
+        gap: 840,
+        mode: "underwater",
+        prompt: "NICHT TAUCHEN!",
+        labelOffset: 156,
+      },
     ];
     const allowed = this.runTime < 18 ? options.slice(0, 3) : this.runTime < 38 ? options.slice(0, 5) : options;
     const pick = this.getNextObstacle(allowed);
@@ -906,7 +932,8 @@ class GameScene extends Phaser.Scene {
       this.decorateSoapStack(obstacle);
     }
 
-    const label = this.add.text(obstacle.x, obstacle.y - obstacle.getData("labelOffset"), pick.prompt, hudTextStyle(20, pick.mode === "dive" ? "#9df6ff" : "#ffd43f"));
+    const labelColor = pick.mode === "dive" ? "#9df6ff" : pick.mode === "underwater" ? "#ff70ad" : "#ffd43f";
+    const label = this.add.text(obstacle.x, obstacle.y - obstacle.getData("labelOffset"), pick.prompt, hudTextStyle(20, labelColor));
     label.setOrigin(0.5);
     label.setDepth(9);
     label.setData("cleanup", true);
@@ -1018,17 +1045,23 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  spawnPearlAt(x, y, key, velocityX, trailId = null) {
+  spawnPearlAt(x, y, key, velocityX, trailId = null, options = {}) {
     const value = getCollectibleValue(key);
     const pearl = this.collectibles.create(x, y, key);
     pearl.setScale(getCollectibleScale(key));
-    pearl.body.setCircle(24);
-    pearl.body.setOffset(24, 24);
+    if (key === "underwaterPearls") {
+      pearl.body.setCircle(174);
+      pearl.body.setOffset(233, 233);
+    } else {
+      pearl.body.setCircle(24);
+      pearl.body.setOffset(24, 24);
+    }
     pearl.setVelocityX(velocityX);
-    pearl.setDepth(6);
+    pearl.setDepth(options.underwater ? 5 : 6);
     pearl.setData("value", value);
     pearl.setData("cleanup", true);
     pearl.setData("trailId", trailId);
+    pearl.setData("underwater", Boolean(options.underwater));
 
     this.tweens.add({
       targets: pearl,
@@ -1049,6 +1082,12 @@ class GameScene extends Phaser.Scene {
     }
 
     const roll = Phaser.Math.Between(1, 100);
+    if (this.runTime > 10 && roll > 84) {
+      const underwaterY = Phaser.Math.Between(WATERLINE + 54, WATERLINE + 118);
+      this.spawnPearlAt(GAME_WIDTH + 100, underwaterY, "underwaterPearls", -this.speed * 0.72, null, { underwater: true });
+      return;
+    }
+
     const key = roll > 96 ? "starfishBonus" : roll > 90 ? "shellPearl" : roll > 78 ? "pearlGold" : roll > 44 ? "pearlBlue" : "pearlPink";
     const safeLane = Phaser.Utils.Array.GetRandom(COLLECTIBLE_LANES);
     this.spawnPearlAt(GAME_WIDTH + 100, safeLane, key, -this.speed * 0.78);
@@ -1148,6 +1187,10 @@ class GameScene extends Phaser.Scene {
 
   collectPearl(_, pearl) {
     if (!pearl.active) {
+      return;
+    }
+
+    if (pearl.getData("underwater") && !this.isDiving) {
       return;
     }
 
@@ -1287,6 +1330,10 @@ class GameScene extends Phaser.Scene {
     }
 
     const mode = obstacle.getData("mode");
+    if (mode === "underwater" && !this.isDiving) {
+      return;
+    }
+
     if (mode === "dive" && this.isDiving) {
       this.passUnderObstacle(obstacle);
       return;
@@ -1931,6 +1978,17 @@ class GameScene extends Phaser.Scene {
         }
 
         this.handleHit(this.duck, obstacle);
+        return;
+      }
+
+      if (mode === "underwater") {
+        if (this.isDiving) {
+          this.handleHit(this.duck, obstacle);
+          return;
+        }
+
+        obstacle.setData("passed", true);
+        this.addCombo(1, "OBEN VORBEI!", obstacle.x, obstacle.y - 118, "#ff70ad");
       }
     });
   }
@@ -2049,10 +2107,10 @@ class GameScene extends Phaser.Scene {
         ["jump", "jump", "dive"],
       ];
       const later = [
-        ["jump", "dive", "stomp", "dive"],
-        ["dive", "stomp", "jump", "dive"],
-        ["stomp", "jump", "dive", "stomp"],
-        ["jump", "stomp", "dive", "jump"],
+        ["jump", "dive", "stomp", "underwater"],
+        ["dive", "underwater", "jump", "stomp"],
+        ["stomp", "jump", "dive", "underwater"],
+        ["jump", "stomp", "underwater", "dive"],
       ];
       this.obstaclePattern = Phaser.Utils.Array.GetRandom(this.runTime < 35 ? early : later).slice();
     }
@@ -2080,6 +2138,8 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
+      const underwater = pearl.getData("underwater");
+
       if (pearl.x < this.duck.x - 120) {
         pearl.setActive(false);
         pearl.body.enable = false;
@@ -2089,9 +2149,13 @@ class GameScene extends Phaser.Scene {
 
       if (pearl.x < this.duck.x + 14) {
         const passedDistance = Phaser.Math.Distance.Between(this.duck.x, this.duck.y, pearl.x, pearl.y);
-        if (passedDistance < lateCatchDistance) {
+        if ((!underwater || this.isDiving) && passedDistance < lateCatchDistance) {
           this.collectPearl(this.duck, pearl);
         }
+        return;
+      }
+
+      if (underwater && !this.isDiving) {
         return;
       }
 
@@ -2170,6 +2234,8 @@ function addWaterOverlay(scene) {
   wash.fillGradientStyle(0x6ff4ff, 0x6ff4ff, 0x0877b8, 0x043d76, 0.05, 0.05, 0.12, 0.16);
   wash.fillRect(0, WATER_SURFACE_Y - 8, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y + 8);
 
+  addCurrentSprites(scene, baseDepth + 0.08);
+
   const deepCurrent = drawWaterCurrent(scene, WATER_SURFACE_Y + 92, 0x7cfaff, 0.055, 5, 168, 4);
   deepCurrent.setDepth(baseDepth + 0.1);
   scene.tweens.add({
@@ -2212,6 +2278,33 @@ function addWaterOverlay(scene) {
 
   addBathtubRunoff(scene, baseDepth + 0.35);
   addWaterGlints(scene, baseDepth + 0.2);
+}
+
+function addCurrentSprites(scene, depth) {
+  const currents = [
+    { x: 180, y: WATER_SURFACE_Y + 154, scale: 0.27, alpha: 0.13, duration: 10800 },
+    { x: 760, y: WATER_SURFACE_Y + 210, scale: 0.21, alpha: 0.1, duration: 12800 },
+    { x: 1180, y: WATER_SURFACE_Y + 114, scale: 0.18, alpha: 0.08, duration: 9200 },
+  ];
+
+  currents.forEach((config) => {
+    const current = scene.add.image(config.x, config.y, "waterCurrent");
+    current.setScale(config.scale);
+    current.setAlpha(config.alpha);
+    current.setDepth(depth);
+    current.setBlendMode(Phaser.BlendModes.SCREEN);
+
+    scene.tweens.add({
+      targets: current,
+      x: current.x - 520,
+      y: current.y + 18,
+      alpha: config.alpha * 0.45,
+      duration: config.duration,
+      repeat: -1,
+      yoyo: true,
+      ease: "Sine.inOut",
+    });
+  });
 }
 
 function drawWaterCurrent(scene, y, color, alpha, amplitude, wavelength, lanes) {
@@ -2364,6 +2457,9 @@ function getCollectibleValue(key) {
   if (key === "shellPearl") {
     return 100;
   }
+  if (key === "underwaterPearls") {
+    return 80;
+  }
   if (key === "pearlGold") {
     return 50;
   }
@@ -2377,6 +2473,9 @@ function getCollectibleScale(key) {
   if (key === "shellPearl") {
     return 0.42;
   }
+  if (key === "underwaterPearls") {
+    return 0.206;
+  }
   return key === "pearlGold" ? 0.58 : 0.52;
 }
 
@@ -2387,6 +2486,9 @@ function getCollectibleMessage(key) {
   if (key === "shellPearl") {
     return "MUSCHELPERLE!";
   }
+  if (key === "underwaterPearls") {
+    return "TIEFENPERLEN!";
+  }
   if (key === "pearlGold") {
     return "GOLDPERLE!";
   }
@@ -2394,7 +2496,7 @@ function getCollectibleMessage(key) {
 }
 
 function isPearlAnimationTarget(target) {
-  return ["pearlPink", "pearlBlue", "pearlGold", "shellPearl", "starfishBonus"].includes(target?.texture?.key);
+  return ["pearlPink", "pearlBlue", "pearlGold", "shellPearl", "starfishBonus", "underwaterPearls"].includes(target?.texture?.key);
 }
 
 function makeRoundButton(scene, x, y, label) {
