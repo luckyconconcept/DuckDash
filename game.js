@@ -3,6 +3,7 @@ const GAME_HEIGHT = 720;
 const WATER_SURFACE_Y = 456;
 const WATERLINE = 500;
 const DUCK_WATERLINE = 476;
+const WATER_TUNING_MODE = true;
 const STORAGE_KEY = "duck-dash-stats";
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
@@ -814,7 +815,7 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnObstacle() {
-    if (this.isGameOver || this.isPaused) {
+    if (WATER_TUNING_MODE || this.isGameOver || this.isPaused) {
       return;
     }
 
@@ -1078,7 +1079,7 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnCollectible() {
-    if (this.isGameOver || this.isPaused) {
+    if (WATER_TUNING_MODE || this.isGameOver || this.isPaused) {
       return;
     }
 
@@ -1095,7 +1096,7 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnPowerUp() {
-    if (this.isGameOver || this.isPaused || this.runTime < 12) {
+    if (WATER_TUNING_MODE || this.isGameOver || this.isPaused || this.runTime < 12) {
       return;
     }
 
@@ -2236,6 +2237,7 @@ function addWaterOverlay(scene) {
   wash.fillRect(0, WATER_SURFACE_Y + 10, GAME_WIDTH, GAME_HEIGHT - WATER_SURFACE_Y - 10);
 
   addCurrentSprites(scene, baseDepth + 0.08);
+  addAnimatedWaterSurface(scene, baseDepth + 0.18);
   addWaterCausticRibbons(scene, baseDepth + 0.22);
   addSurfaceShimmer(scene, baseDepth + 0.24);
 
@@ -2290,6 +2292,49 @@ function addCurrentSprites(scene, depth) {
       ease: "Sine.inOut",
     });
   });
+}
+
+function addAnimatedWaterSurface(scene, depth) {
+  const bands = [
+    { y: WATER_SURFACE_Y + 4, color: 0xeaffff, alpha: 0.18, width: 10, amp: 5, wave: 86, speed: 3000, drift: -220 },
+    { y: WATER_SURFACE_Y + 15, color: 0x7cfaff, alpha: 0.14, width: 7, amp: 7, wave: 118, speed: 4200, drift: 260 },
+    { y: WATER_SURFACE_Y + 28, color: 0xffffff, alpha: 0.1, width: 5, amp: 4, wave: 64, speed: 3600, drift: -180 },
+  ];
+
+  bands.forEach((band, index) => {
+    const surface = drawSoftSurfaceBand(scene, band);
+    surface.setDepth(depth + index * 0.01);
+    surface.setBlendMode(Phaser.BlendModes.SCREEN);
+    scene.tweens.add({
+      targets: surface,
+      x: surface.x + band.drift,
+      y: index % 2 === 0 ? 3 : -3,
+      alpha: 0.62,
+      duration: band.speed,
+      delay: index * 280,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  });
+}
+
+function drawSoftSurfaceBand(scene, band) {
+  const graphic = scene.add.graphics();
+  const width = GAME_WIDTH + 520;
+  graphic.x = -260;
+  graphic.setAlpha(0.86);
+  graphic.lineStyle(band.width, band.color, band.alpha);
+  graphic.beginPath();
+  graphic.moveTo(0, band.y);
+
+  for (let x = 0; x <= width; x += 16) {
+    const y = band.y + Math.sin(x / band.wave) * band.amp + Math.sin(x / 37) * 1.8;
+    graphic.lineTo(x, y);
+  }
+
+  graphic.strokePath();
+  return graphic;
 }
 
 function addWaterCausticRibbons(scene, depth) {
