@@ -277,6 +277,8 @@ class GameScene extends Phaser.Scene {
     this.diveUntil = 0;
     this.diveStartedAt = 0;
     this.diveHeld = false;
+    this.diveQueuedUntil = 0;
+    this.diveQueuedHeld = false;
     this.diveRecoverUntil = 0;
     this.lastDiveBubbleAt = 0;
     this.diveWake = null;
@@ -296,6 +298,8 @@ class GameScene extends Phaser.Scene {
     this.obstaclePattern = [];
     this.rewardTrailId = 0;
     this.cupBrushIntroduced = false;
+    this.pendingPowerUpRetry = false;
+    this.nextPowerUpAt = 0;
 
     addBackground(this);
     addWaterOverlay(this);
@@ -383,13 +387,13 @@ class GameScene extends Phaser.Scene {
     this.actionText = this.add.text(370, 38, "SPRINGEN | TAUCHEN | DRIFTEN", hudTextStyle(22, "#9df6ff"));
     this.comboText = this.add.text(GAME_WIDTH - 330, 118, "", hudTextStyle(26, "#ffd43f")).setOrigin(1, 0.5);
     this.powerStatusTexts = {
-      shield: this.add.text(776, 34, "", hudTextStyle(18, "#9df6ff")).setOrigin(0, 0.5).setDepth(9),
-      magnet: this.add.text(912, 34, "", hudTextStyle(18, "#ffd43f")).setOrigin(0, 0.5).setDepth(9),
-      turbo: this.add.text(1052, 34, "", hudTextStyle(18, "#ff70ad")).setOrigin(0, 0.5).setDepth(9),
+      shield: this.add.text(776, 34, "", hudTextStyle(20, "#9df6ff")).setOrigin(0, 0.5).setDepth(9),
+      magnet: this.add.text(888, 34, "", hudTextStyle(20, "#ffd43f")).setOrigin(0, 0.5).setDepth(9),
+      turbo: this.add.text(1008, 34, "", hudTextStyle(20, "#ff70ad")).setOrigin(0, 0.5).setDepth(9),
     };
     this.tweens.add({
       targets: this.actionText,
-      alpha: 0.28,
+      alpha: 0.42,
       delay: 6200,
       duration: 800,
       ease: "Sine.inOut",
@@ -504,6 +508,7 @@ class GameScene extends Phaser.Scene {
     this.expireCombo();
     this.updatePowerUpState();
     this.updateDiveState();
+    this.processQueuedDive();
     this.syncDiveVisual();
     if (!this.isDiving && this.time.now > this.diveRecoverUntil) {
       this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
@@ -525,7 +530,9 @@ class GameScene extends Phaser.Scene {
           this.destroyObstacleVisuals(child);
         }
         child.getData("label")?.destroy();
+        this.tweens.killTweensOf(child.getData("ring"));
         child.getData("visual")?.destroy();
+        this.tweens.killTweensOf(child);
         child.destroy();
       }
     });
@@ -557,12 +564,24 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.isDiving || this.time.now < this.diveRecoverUntil) {
+    if (this.isDiving) {
       return;
     }
 
+    if (this.time.now < this.diveRecoverUntil) {
+      this.diveQueuedUntil = this.time.now + 190;
+      this.diveQueuedHeld = held;
+      return;
+    }
+
+    this.startDive(held);
+  }
+
+  startDive(held = false) {
     this.isDiving = true;
     this.diveHeld = held;
+    this.diveQueuedUntil = 0;
+    this.diveQueuedHeld = false;
     this.diveStartedAt = this.time.now;
     this.diveUntil = this.time.now + DIVE_MIN_DURATION;
     SoundFX.unlock();
@@ -580,6 +599,8 @@ class GameScene extends Phaser.Scene {
 
   releaseDive() {
     if (!this.isDiving) {
+      this.diveQueuedUntil = 0;
+      this.diveQueuedHeld = false;
       return;
     }
 
@@ -587,6 +608,24 @@ class GameScene extends Phaser.Scene {
     if (this.time.now >= this.diveUntil) {
       this.finishDive();
     }
+  }
+
+  processQueuedDive() {
+    if (this.diveQueuedUntil === 0) {
+      return;
+    }
+
+    if (this.isDiving || this.time.now < this.diveRecoverUntil) {
+      return;
+    }
+
+    if (this.time.now > this.diveQueuedUntil) {
+      this.diveQueuedUntil = 0;
+      this.diveQueuedHeld = false;
+      return;
+    }
+
+    this.startDive(this.diveQueuedHeld);
   }
 
   spawnObstacle() {
@@ -857,10 +896,21 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnPowerUp() {
-    if (this.isGameOver || this.isPaused || this.runTime < 12 || !this.hasObstacleGap(560)) {
+    if (this.isGameOver || this.isPaused || this.runTime < 12) {
       return;
     }
 
+    if (this.time.now < this.nextPowerUpAt) {
+      return;
+    }
+
+    if (!this.hasObstacleGap(560)) {
+      this.queuePowerUpRetry();
+      return;
+    }
+
+    this.pendingPowerUpRetry = false;
+    this.nextPowerUpAt = this.time.now + 6800;
     const options = [
       { type: "bomb", key: "quackBomb", label: "BOMBE", icon: "!", color: "#ffd43f", ring: 0xffd43f, scale: 0.78, tint: null },
       { type: "magnet", key: "pearlGold", label: "MAGNET", icon: "M", color: "#ffd43f", ring: 0xff70ad, scale: 0.72, tint: 0xff70ad },
@@ -896,15 +946,28 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  queuePowerUpRetry() {
+    if (this.pendingPowerUpRetry) {
+      return;
+    }
+
+    this.pendingPowerUpRetry = true;
+    this.time.delayedCall(1450, () => {
+      this.pendingPowerUpRetry = false;
+      this.spawnPowerUp();
+    });
+  }
+
   decoratePowerUp(powerUp, config) {
     const visual = this.add.container(powerUp.x, powerUp.y);
-    visual.setDepth(5);
+    visual.setDepth(8);
     visual.setData("cleanup", true);
     const ring = this.add.circle(0, 0, 48, config.ring, 0.12);
     ring.setStrokeStyle(5, config.ring, 0.72);
     const badge = this.add.text(0, 1, config.icon, hudTextStyle(24, config.color)).setOrigin(0.5);
     visual.add([ring, badge]);
     powerUp.setData("visual", visual);
+    powerUp.setData("ring", ring);
     this.tweens.add({
       targets: ring,
       scale: 1.18,
@@ -940,6 +1003,7 @@ class GameScene extends Phaser.Scene {
     this.splash(pearl.x, pearl.y);
     pearl.setActive(false);
     pearl.body.enable = false;
+    this.tweens.killTweensOf(pearl);
     this.tweens.add({
       targets: pearl,
       scale: pearl.scale * 1.8,
@@ -952,7 +1016,9 @@ class GameScene extends Phaser.Scene {
   collectPowerUp(_, powerUp) {
     const type = powerUp.getData("type") || "bomb";
     powerUp.getData("label")?.destroy();
+    this.tweens.killTweensOf(powerUp.getData("ring"));
     powerUp.getData("visual")?.destroy();
+    this.tweens.killTweensOf(powerUp);
     powerUp.destroy();
 
     if (type === "magnet") {
@@ -1705,7 +1771,8 @@ class GameScene extends Phaser.Scene {
   }
 
   showFloatingText(message, x, y, color) {
-    const text = this.add.text(x, y, message, hudTextStyle(28, color)).setOrigin(0.5).setDepth(22);
+    const size = message.length >= 17 ? 20 : message.length > 12 ? 24 : 28;
+    const text = this.add.text(x, y, message, hudTextStyle(size, color)).setOrigin(0.5).setDepth(22);
     this.tweens.add({
       targets: text,
       y: y - 54,
