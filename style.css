@@ -137,10 +137,17 @@ canvas {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+  .game-shell {
+    padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right))
+      max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  }
+
   #game {
-    width: min(calc(100vw - 24px), calc((100svh - 24px) * 16 / 9));
+    width: min(calc(100vw - 8px), calc((100svh - 8px) * 16 / 9));
     height: auto;
     aspect-ratio: 16 / 9;
+    border-width: 2px;
+    border-radius: 10px;
   }
 }
 

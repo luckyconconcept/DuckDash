@@ -9,6 +9,9 @@ const DIVE_RECOVERY_DURATION = 260;
 const DUCK_HOME_X = 220;
 const DUCK_MIN_X = 96;
 const DUCK_MAX_X = 420;
+const STOMP_TOP_GRACE = 48;
+const STOMP_MIN_VELOCITY_Y = -80;
+const STOMP_HORIZONTAL_GRACE = 112;
 
 const QUIPS = [
   "QUAK!",
@@ -598,6 +601,13 @@ class GameScene extends Phaser.Scene {
   }
 
   releaseDive() {
+    if (this.isGameOver || this.isPaused) {
+      this.diveQueuedUntil = 0;
+      this.diveQueuedHeld = false;
+      this.diveHeld = false;
+      return;
+    }
+
     if (!this.isDiving) {
       this.diveQueuedUntil = 0;
       this.diveQueuedHeld = false;
@@ -954,6 +964,11 @@ class GameScene extends Phaser.Scene {
     this.pendingPowerUpRetry = true;
     this.time.delayedCall(1450, () => {
       this.pendingPowerUpRetry = false;
+      if (this.isPaused && !this.isGameOver) {
+        this.queuePowerUpRetry();
+        return;
+      }
+
       this.spawnPowerUp();
     });
   }
@@ -1513,7 +1528,10 @@ class GameScene extends Phaser.Scene {
   canStomp(obstacle) {
     const duckBottom = this.duck.body.y + this.duck.body.height;
     const obstacleTop = obstacle.body.y;
-    return !this.isDiving && this.duck.body.velocity.y > -60 && duckBottom < obstacleTop + 34;
+    const isAboveObstacle = duckBottom < obstacleTop + STOMP_TOP_GRACE;
+    const isNearApexOrFalling = this.duck.body.velocity.y > STOMP_MIN_VELOCITY_Y;
+    const isCenteredEnough = Math.abs(this.duck.x - obstacle.x) < STOMP_HORIZONTAL_GRACE;
+    return !this.isDiving && isNearApexOrFalling && isAboveObstacle && isCenteredEnough;
   }
 
   updateHorizontalControl(deltaSeconds) {
@@ -1888,7 +1906,11 @@ function readStats() {
 }
 
 function writeStats(stats) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+  } catch {
+    // Highscore persistence is optional; game-over UI must still render.
+  }
 }
 
 const config = {
