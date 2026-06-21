@@ -1122,7 +1122,22 @@ class GameScene extends Phaser.Scene {
 
   pullNearbyCollectibles() {
     this.collectibles.getChildren().forEach((pearl) => {
-      if (!pearl.active || pearl.x < this.duck.x - 40) {
+      if (!pearl.active) {
+        return;
+      }
+
+      if (pearl.x < this.duck.x - 120) {
+        pearl.setActive(false);
+        pearl.body.enable = false;
+        pearl.destroy();
+        return;
+      }
+
+      if (pearl.x < this.duck.x + 14) {
+        const passedDistance = Phaser.Math.Distance.Between(this.duck.x, this.duck.y, pearl.x, pearl.y);
+        if (passedDistance < 150) {
+          this.collectPearl(this.duck, pearl);
+        }
         return;
       }
 
@@ -1131,11 +1146,11 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 22, 0.045);
-      pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 8, 0.045);
+      pearl.x = Phaser.Math.Linear(pearl.x, this.duck.x + 28, 0.032);
+      pearl.y = Phaser.Math.Linear(pearl.y, this.duck.y - 4, 0.032);
       pearl.setVelocityX(Math.min(pearl.body.velocity.x, -this.speed * 0.42));
 
-      if (distance < 76) {
+      if (distance < 96) {
         this.collectPearl(this.duck, pearl);
       }
     });
