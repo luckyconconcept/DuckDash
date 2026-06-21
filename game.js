@@ -6,6 +6,9 @@ const COLLECTIBLE_LANES = [430, 400, 368];
 const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
 const DIVE_RECOVERY_DURATION = 260;
+const DUCK_HOME_X = 220;
+const DUCK_MIN_X = 160;
+const DUCK_MAX_X = 320;
 
 const QUIPS = [
   "QUAK!",
@@ -178,7 +181,7 @@ class MenuScene extends Phaser.Scene {
     });
 
     this.add
-      .text(GAME_WIDTH / 2, 666, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen", {
+      .text(GAME_WIDTH / 2, 666, "Space / Tap = Springen\nPfeil runter / Swipe = Tauchen\nLinks/Rechts = Driften", {
         fontFamily: "Trebuchet MS",
         fontSize: "22px",
         fontStyle: "700",
@@ -331,7 +334,7 @@ class GameScene extends Phaser.Scene {
       bubble.setDepth(9);
       return bubble;
     });
-    this.actionText = this.add.text(370, 38, "DRAUFspringen oder UNTERtauchen", hudTextStyle(22, "#9df6ff"));
+    this.actionText = this.add.text(370, 38, "DRUEBER, DRAUF oder UNTERtauchen", hudTextStyle(22, "#9df6ff"));
     this.comboText = this.add.text(GAME_WIDTH - 330, 118, "", hudTextStyle(26, "#ffd43f")).setOrigin(1, 0.5);
     this.tweens.add({
       targets: this.actionText,
@@ -359,6 +362,7 @@ class GameScene extends Phaser.Scene {
 
   createControls() {
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.wasd = this.input.keyboard.addKeys("A,D");
     this.input.keyboard.on("keydown-SPACE", () => this.jump());
     this.input.keyboard.on("keydown-UP", () => this.jump());
     this.input.keyboard.on("keydown-DOWN", () => this.dive(true));
@@ -422,7 +426,9 @@ class GameScene extends Phaser.Scene {
       this.duck.setAngle(Phaser.Math.Clamp(this.duck.body.velocity.y / 34, -14, 18));
     }
     this.pullNearbyCollectibles();
+    this.updateHorizontalControl(deltaSeconds);
     this.updateObstacleLabels();
+    this.rewardPassedJumpObstacles();
 
     if (this.score >= this.lastMilestone + 500) {
       this.lastMilestone += 500;
@@ -508,8 +514,8 @@ class GameScene extends Phaser.Scene {
         speedBoost: 10,
         body: [128, 38, 66, 68],
         gap: 660,
-        mode: "stomp",
-        prompt: "DRAUF!",
+        mode: "jump",
+        prompt: "DRUEBER!",
       },
       {
         key: "toothbrush",
@@ -629,6 +635,7 @@ class GameScene extends Phaser.Scene {
   spawnRewardTrailForObstacle(obstacle, config) {
     const trailId = (this.rewardTrailId += 1);
     const isDive = config.mode === "dive";
+    const isJump = config.mode === "jump";
     const points = isDive
       ? [
           { x: -290, y: WATERLINE - 42, key: "pearlBlue" },
@@ -636,7 +643,14 @@ class GameScene extends Phaser.Scene {
           { x: 58, y: WATERLINE - 58, key: "pearlGold" },
           { x: 158, y: WATERLINE - 82, key: "pearlPink" },
         ]
-      : [
+      : isJump
+        ? [
+            { x: -236, y: WATERLINE - 102, key: "pearlPink" },
+            { x: -126, y: WATERLINE - 162, key: "pearlBlue" },
+            { x: 4, y: WATERLINE - 194, key: "pearlGold" },
+            { x: 140, y: WATERLINE - 142, key: "pearlBlue" },
+          ]
+        : [
           { x: -248, y: WATERLINE - 116, key: "pearlPink" },
           { x: -136, y: WATERLINE - 182, key: "pearlBlue" },
           { x: -20, y: WATERLINE - 224, key: "pearlGold" },
@@ -1019,6 +1033,44 @@ class GameScene extends Phaser.Scene {
     return !this.isDiving && this.duck.body.velocity.y > -60 && duckBottom < obstacleTop + 34;
   }
 
+  updateHorizontalControl(deltaSeconds) {
+    const movingLeft = this.cursors.left?.isDown || this.wasd.A?.isDown;
+    const movingRight = this.cursors.right?.isDown || this.wasd.D?.isDown;
+    let targetX = DUCK_HOME_X;
+
+    if (movingLeft && !movingRight) {
+      targetX = DUCK_MIN_X;
+    } else if (movingRight && !movingLeft) {
+      targetX = DUCK_MAX_X;
+    }
+
+    const desiredVelocity = Phaser.Math.Clamp((targetX - this.duck.x) * 7, -260, 260);
+    this.duck.setVelocityX(desiredVelocity);
+    this.duck.x = Phaser.Math.Clamp(this.duck.x, DUCK_MIN_X, DUCK_MAX_X);
+
+    if ((movingLeft || movingRight) && !this.isDiving) {
+      const lean = movingLeft ? -7 : 7;
+      this.duck.setAngle(Phaser.Math.Linear(this.duck.angle, lean, Math.min(1, deltaSeconds * 10)));
+    }
+  }
+
+  rewardPassedJumpObstacles() {
+    this.obstacles.getChildren().forEach((obstacle) => {
+      if (!obstacle.active || obstacle.getData("mode") !== "jump" || obstacle.getData("passed")) {
+        return;
+      }
+
+      if (obstacle.x > this.duck.x - 46) {
+        return;
+      }
+
+      obstacle.setData("passed", true);
+      this.score += 25;
+      this.addCombo(2, "DRUEBER!", obstacle.x, obstacle.y - 82, "#ffd43f");
+      SoundFX.success();
+    });
+  }
+
   stompObstacle(obstacle) {
     obstacle.body.enable = false;
     this.destroyObstacleVisuals(obstacle);
@@ -1211,13 +1263,8 @@ function addWaterOverlay(scene) {
   const wave = scene.add.graphics();
   wave.fillStyle(0x20c7e8, 0.32);
   wave.fillRect(0, WATERLINE - 10, GAME_WIDTH, GAME_HEIGHT - WATERLINE + 10);
-  wave.lineStyle(4, 0xa4fbff, 0.42);
-
-  for (let x = -80; x < GAME_WIDTH + 120; x += 130) {
-    wave.beginPath();
-    wave.arc(x, WATERLINE - 8, 70, Phaser.Math.DegToRad(8), Phaser.Math.DegToRad(172), false);
-    wave.strokePath();
-  }
+  wave.lineStyle(3, 0xa4fbff, 0.28);
+  wave.lineBetween(0, WATERLINE - 8, GAME_WIDTH, WATERLINE - 8);
 }
 
 function makeButton(scene, x, y, label) {
