@@ -19,6 +19,19 @@ Diese vier Assets sind die naechsten sinnvollen Grafiken. Sie muessen als freige
 | `assets/ui_signal_stomp.png` | `uiSignalStomp` | Vorwarnung: draufspringen/bouncen | P0 |
 | `assets/ui_signal_stay_up.png` | `uiSignalStayUp` | Vorwarnung: oben bleiben/nicht tauchen | P0 |
 
+## Gameplay-Hooks fuer Batch 1
+
+Die Signale sind nicht als Deko gedacht. Sie haengen an diesen Gameplay-Sequenzen:
+
+| Sequenz | Aktueller Zweck | Passendes Asset |
+|---|---|---|
+| `jump_intro` | einfacher Lernsprung mit kurzer Perlenlinie | `assets/ui_signal_jump.png` |
+| `jump_collect_arc` | groessere Sprungkurve mit mehr Reward | `assets/ui_signal_jump.png` |
+| `dive_intro` | erstes klares Untertauchen | `assets/ui_signal_dive.png` |
+| `dive_pearl_tunnel` | Unterwasser-Perlentunnel als Risiko-Route | `assets/ui_signal_dive.png` |
+| `stomp_bounce_reward` | auf Sponge/Duck-Ring landen und bouncen | `assets/ui_signal_stomp.png` |
+| `stay_up_surface_line` | Unterwasser-Gefahr, oben bleiben | `assets/ui_signal_stay_up.png` |
+
 ## Batch 2: nur ersetzen, wenn nach dem Test noetig
 
 Diese Assets existieren bereits und sind im Gameplay sinnvoller als komplett neue Motive. Nicht neu erstellen, solange sie im Spiel visuell funktionieren.

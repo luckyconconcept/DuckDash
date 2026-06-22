@@ -24,7 +24,7 @@ const DUCK_MAX_X = 720;
 const HUD_PAUSE_X = GAME_WIDTH - 54;
 const HUD_PAUSE_Y = 56;
 const STOMP_TOP_GRACE = 48;
-const STOMP_MIN_VELOCITY_Y = -80;
+const STOMP_MIN_VELOCITY_Y = -180;
 const STOMP_HORIZONTAL_GRACE = 112;
 const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
 const MODE_CUE_CONFIG = {
@@ -32,6 +32,63 @@ const MODE_CUE_CONFIG = {
   dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8 },
   stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f },
   underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76 },
+};
+const OBSTACLE_SEQUENCES = {
+  early: [
+    [
+      { mode: "jump", sequence: "jump_intro" },
+      { mode: "dive", sequence: "dive_intro" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+    ],
+    [
+      { mode: "jump", sequence: "jump_intro" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "dive", sequence: "dive_intro" },
+    ],
+  ],
+  mid: [
+    [
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+      { mode: "dive", sequence: "dive_intro" },
+    ],
+    [
+      { mode: "dive", sequence: "dive_intro" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+    ],
+    [
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "dive", sequence: "dive_pearl_tunnel" },
+    ],
+  ],
+  later: [
+    [
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+      { mode: "underwater", sequence: "stay_up_surface_line" },
+    ],
+    [
+      { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "underwater", sequence: "stay_up_surface_line" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+    ],
+    [
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "underwater", sequence: "stay_up_surface_line" },
+    ],
+    [
+      { mode: "jump", sequence: "jump_collect_arc" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
+      { mode: "underwater", sequence: "stay_up_surface_line" },
+      { mode: "dive", sequence: "dive_pearl_tunnel" },
+    ],
+  ],
 };
 const MENU_START_HIT = {
   x: 184,
@@ -1017,6 +1074,7 @@ class GameScene extends Phaser.Scene {
     obstacle.setDepth(7);
     obstacle.setData("cleanup", true);
     obstacle.setData("mode", pick.mode);
+    obstacle.setData("sequence", pick.sequence);
     obstacle.setData("prompt", pick.prompt);
     obstacle.setData("labelOffset", pick.labelOffset ?? (pick.mode === "dive" ? 74 : 88));
 
@@ -1149,7 +1207,7 @@ class GameScene extends Phaser.Scene {
 
   spawnRewardTrailForObstacle(obstacle, config) {
     const trailId = (this.rewardTrailId += 1);
-    const points = this.getRewardTrailPoints(config.mode);
+    const points = this.getRewardTrailPoints(config.sequence ?? config.mode);
 
     points.forEach((point, index) => {
       this.time.delayedCall(index * 55, () => {
@@ -1162,26 +1220,44 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  getRewardTrailPoints(mode) {
-    if (mode === "dive") {
+  getRewardTrailPoints(sequence) {
+    if (sequence === "dive_intro") {
       return [
-        { x: -310, y: WATER_SURFACE_Y + 78, key: "pearlBlue", underwater: true },
-        { x: -190, y: WATER_SURFACE_Y + 104, key: "pearlBlue", underwater: true },
-        { x: -48, y: WATER_SURFACE_Y + 118, key: "pearlGold", underwater: true },
-        { x: 108, y: WATER_SURFACE_Y + 94, key: "pearlPink", underwater: true },
+        { x: -278, y: WATER_SURFACE_Y + 72, key: "pearlBlue", underwater: true },
+        { x: -150, y: WATER_SURFACE_Y + 96, key: "pearlBlue", underwater: true },
+        { x: -20, y: WATER_SURFACE_Y + 104, key: "pearlGold", underwater: true },
       ];
     }
 
-    if (mode === "jump") {
+    if (sequence === "dive_pearl_tunnel") {
       return [
-        { x: -252, y: WATER_SURFACE_Y - 50, key: "pearlPink" },
-        { x: -146, y: WATER_SURFACE_Y - 98, key: "pearlBlue" },
-        { x: -20, y: WATER_SURFACE_Y - 132, key: "pearlGold" },
-        { x: 124, y: WATER_SURFACE_Y - 88, key: "pearlBlue" },
+        { x: -330, y: WATER_SURFACE_Y + 70, key: "pearlBlue", underwater: true },
+        { x: -216, y: WATER_SURFACE_Y + 98, key: "pearlBlue", underwater: true },
+        { x: -92, y: WATER_SURFACE_Y + 118, key: "pearlGold", underwater: true },
+        { x: 42, y: WATER_SURFACE_Y + 108, key: "pearlPink", underwater: true },
+        { x: 166, y: WATER_SURFACE_Y + 82, key: "pearlBlue", underwater: true },
       ];
     }
 
-    if (mode === "stomp") {
+    if (sequence === "jump_intro") {
+      return [
+        { x: -230, y: WATER_SURFACE_Y - 54, key: "pearlPink" },
+        { x: -108, y: WATER_SURFACE_Y - 102, key: "pearlBlue" },
+        { x: 34, y: WATER_SURFACE_Y - 92, key: "pearlGold" },
+      ];
+    }
+
+    if (sequence === "jump_collect_arc") {
+      return [
+        { x: -272, y: WATER_SURFACE_Y - 42, key: "pearlPink" },
+        { x: -164, y: WATER_SURFACE_Y - 94, key: "pearlBlue" },
+        { x: -36, y: WATER_SURFACE_Y - 134, key: "pearlGold" },
+        { x: 104, y: WATER_SURFACE_Y - 96, key: "pearlBlue" },
+        { x: 224, y: WATER_SURFACE_Y - 44, key: "pearlPink" },
+      ];
+    }
+
+    if (sequence === "stomp_bounce_reward") {
       return [
         { x: -282, y: WATER_SURFACE_Y - 112, key: "pearlBlue" },
         { x: -168, y: WATER_SURFACE_Y - 76, key: "pearlPink" },
@@ -1190,7 +1266,7 @@ class GameScene extends Phaser.Scene {
       ];
     }
 
-    if (mode === "underwater") {
+    if (sequence === "stay_up_surface_line") {
       return [
         { x: -278, y: WATER_SURFACE_Y - 72, key: "pearlPink" },
         { x: -156, y: WATER_SURFACE_Y - 58, key: "pearlBlue" },
@@ -2159,6 +2235,15 @@ class GameScene extends Phaser.Scene {
     return !this.isDiving && isNearApexOrFalling && isAboveObstacle && isCenteredEnough;
   }
 
+  isPreparingStomp(obstacle) {
+    const duckBottom = this.duck.body.y + this.duck.body.height;
+    const obstacleTop = obstacle.body.y;
+    const isStillAboveObstacle = duckBottom < obstacleTop + STOMP_TOP_GRACE + 34;
+    const isNearStompLine = Math.abs(this.duck.x - obstacle.x) < STOMP_HORIZONTAL_GRACE + 48;
+    const isStillApproaching = obstacle.x > this.duck.x - 12;
+    return !this.isDiving && isStillAboveObstacle && isNearStompLine && isStillApproaching;
+  }
+
   updateHorizontalControl(deltaSeconds) {
     const movingLeft = this.cursors.left?.isDown || this.wasd.A?.isDown || this.touchDriftDirection < 0;
     const movingRight = this.cursors.right?.isDown || this.wasd.D?.isDown || this.touchDriftDirection > 0;
@@ -2264,6 +2349,10 @@ class GameScene extends Phaser.Scene {
       if (mode === "stomp") {
         if (this.canStomp(obstacle)) {
           this.stompObstacle(obstacle);
+          return;
+        }
+
+        if (this.isPreparingStomp(obstacle)) {
           return;
         }
 
@@ -2394,28 +2483,28 @@ class GameScene extends Phaser.Scene {
 
   getNextObstacle(options) {
     if (this.obstaclePattern.length === 0) {
-      const early = [
-        ["jump", "dive", "jump"],
-        ["jump", "jump", "dive"],
-      ];
-      const later = [
-        ["jump", "dive", "stomp", "underwater"],
-        ["dive", "underwater", "jump", "stomp"],
-        ["stomp", "jump", "dive", "underwater"],
-        ["jump", "stomp", "underwater", "dive"],
-      ];
-      this.obstaclePattern = Phaser.Utils.Array.GetRandom(this.runTime < 35 ? early : later).slice();
+      let sequencePool = OBSTACLE_SEQUENCES.later;
+      if (this.runTime < 18) {
+        sequencePool = OBSTACLE_SEQUENCES.early;
+      } else if (this.runTime < 34) {
+        sequencePool = OBSTACLE_SEQUENCES.mid;
+      }
+
+      this.obstaclePattern = Phaser.Utils.Array.GetRandom(sequencePool).slice();
     }
 
-    const desiredMode = this.obstaclePattern.shift();
+    const desired = this.obstaclePattern.shift();
+    const desiredMode = typeof desired === "string" ? desired : desired.mode;
+    const sequence = typeof desired === "string" ? desired : desired.sequence;
     const candidates = options.filter((option) => option.mode === desiredMode);
     const cupBrush = candidates.find((option) => option.key === "cupBrush" || option.key === "cupBrushV2");
     if (cupBrush && !this.cupBrushIntroduced) {
       this.cupBrushIntroduced = true;
-      return cupBrush;
+      return { ...cupBrush, sequence };
     }
 
-    return Phaser.Utils.Array.GetRandom(candidates.length > 0 ? candidates : options);
+    const pick = Phaser.Utils.Array.GetRandom(candidates.length > 0 ? candidates : options);
+    return { ...pick, sequence };
   }
 
   pullNearbyCollectibles() {
