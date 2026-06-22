@@ -28,13 +28,13 @@ const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
 const MENU_START_HIT = {
   x: 184,
-  y: 627,
+  y: 597,
   width: 320,
   height: 86,
 };
 const MENU_HIGHSCORE_HIT = {
   x: 792,
-  y: 627,
+  y: 597,
   width: 360,
   height: 86,
 };
@@ -238,11 +238,11 @@ class MenuScene extends Phaser.Scene {
       callback: () => this.menuSplash(this.duck.x - 54, this.duck.y + 42),
     });
 
-    const startButton = makeButton(this, 330, 666, "SPIELEN");
+    const startButton = makeButton(this, 330, 636, "SPIELEN");
     startButton.setDepth(5);
     startButton.on("pointerdown", () => this.startGame());
 
-    const highscoreButton = makeButton(this, 970, 666, "BESTENLISTE");
+    const highscoreButton = makeButton(this, 970, 636, "BESTENLISTE");
     highscoreButton.setDepth(5);
     highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
 
