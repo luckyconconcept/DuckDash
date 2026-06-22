@@ -525,6 +525,7 @@ class GameScene extends Phaser.Scene {
     this.resultSaved = false;
     this.resultEntryId = "";
     this.nameInput = null;
+    this.nameInputLayoutHandler = null;
     this.hudCache = {
       score: null,
       pearls: null,
@@ -1847,7 +1848,6 @@ class GameScene extends Phaser.Scene {
   createNameInput(initialName, x, y, width, height) {
     this.destroyNameInput();
     const canvas = this.game.canvas;
-    const rect = canvas.getBoundingClientRect();
     const input = document.createElement("input");
     input.type = "text";
     input.value = sanitizePlayerName(initialName);
@@ -1855,17 +1855,13 @@ class GameScene extends Phaser.Scene {
     input.autocomplete = "off";
     input.spellcheck = false;
     input.style.position = "fixed";
-    input.style.left = `${rect.left + (x / GAME_WIDTH) * rect.width}px`;
-    input.style.top = `${rect.top + (y / GAME_HEIGHT) * rect.height}px`;
-    input.style.width = `${(width / GAME_WIDTH) * rect.width}px`;
-    input.style.height = `${(height / GAME_HEIGHT) * rect.height}px`;
     input.style.zIndex = "1000";
     input.style.border = "2px solid rgba(157,246,255,0.95)";
     input.style.borderRadius = "12px";
     input.style.background = "rgba(5,38,64,0.92)";
     input.style.color = "#ffffff";
-    input.style.font = "900 17px Trebuchet MS, sans-serif";
-    input.style.lineHeight = "1";
+    input.style.boxSizing = "border-box";
+    input.style.padding = "0 12px";
     input.style.textAlign = "center";
     input.style.outline = "none";
     input.style.boxShadow = "0 8px 24px rgba(0,0,0,0.28)";
@@ -1874,6 +1870,21 @@ class GameScene extends Phaser.Scene {
     });
     document.body.appendChild(input);
     this.nameInput = input;
+    this.nameInputLayoutHandler = () => {
+      const rect = canvas.getBoundingClientRect();
+      const pixelHeight = Math.max(24, (height / GAME_HEIGHT) * rect.height);
+      const fontSize = Phaser.Math.Clamp(pixelHeight * 0.55, 13, 19);
+      input.style.left = `${rect.left + (x / GAME_WIDTH) * rect.width}px`;
+      input.style.top = `${rect.top + (y / GAME_HEIGHT) * rect.height}px`;
+      input.style.width = `${(width / GAME_WIDTH) * rect.width}px`;
+      input.style.height = `${pixelHeight}px`;
+      input.style.font = `900 ${fontSize}px Trebuchet MS, sans-serif`;
+      input.style.lineHeight = `${Math.max(18, pixelHeight - 4)}px`;
+      input.style.borderRadius = `${Math.max(8, Math.min(12, pixelHeight * 0.34))}px`;
+    };
+    this.nameInputLayoutHandler();
+    window.addEventListener("resize", this.nameInputLayoutHandler);
+    window.addEventListener("orientationchange", this.nameInputLayoutHandler);
     input.focus();
     input.select();
   }
@@ -1883,6 +1894,11 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (this.nameInputLayoutHandler) {
+      window.removeEventListener("resize", this.nameInputLayoutHandler);
+      window.removeEventListener("orientationchange", this.nameInputLayoutHandler);
+      this.nameInputLayoutHandler = null;
+    }
     this.nameInput.remove();
     this.nameInput = null;
   }
@@ -2978,8 +2994,8 @@ function makeWinnerCard(scene, x, y, width, height, entry) {
   graphic.strokeRoundedRect(x, y, width, height, 22);
   scene.add.image(x + 72, y + 58, "uiTrophy").setScale(0.115).setDepth(4);
   scene.add.image(x + width / 2, y + 94, "duckVictory").setScale(0.13).setDepth(4);
-  scene.add.text(x + width / 2, y + 172, sanitizePlayerName(entry.name), hudTextStyle(30, "#ffffff")).setOrigin(0.5).setDepth(4);
-  scene.add.text(x + width / 2, y + 226, entry.score.toLocaleString("de-DE"), titleStyle(48, "#123044")).setOrigin(0.5).setDepth(4);
+  addFittedText(scene, x + width / 2, y + 172, sanitizePlayerName(entry.name), hudTextStyle(30, "#ffffff"), width - 62, { originX: 0.5, depth: 4 });
+  addFittedText(scene, x + width / 2, y + 226, entry.score.toLocaleString("de-DE"), titleStyle(48, "#123044"), width - 58, { originX: 0.5, depth: 4 });
   return graphic;
 }
 
@@ -2993,8 +3009,8 @@ function makeLeaderboardRow(scene, x, y, width, height, rank, entry) {
   const medal = scene.add.circle(x + 36, y + height / 2, 20, medalColor, 0.95).setDepth(4);
   medal.setStrokeStyle(3, 0xffffff, 0.62);
   scene.add.text(x + 36, y + height / 2, `${rank}`, hudTextStyle(18, "#ffffff")).setOrigin(0.5).setDepth(5);
-  scene.add.text(x + 76, y + height / 2, sanitizePlayerName(entry.name), hudTextStyle(23, "#ffffff")).setOrigin(0, 0.5).setDepth(4);
-  scene.add.text(x + width - 22, y + height / 2, entry.score.toLocaleString("de-DE"), hudTextStyle(24, "#ffffff")).setOrigin(1, 0.5).setDepth(4);
+  addFittedText(scene, x + 76, y + height / 2, sanitizePlayerName(entry.name), hudTextStyle(23, "#ffffff"), width - 206, { depth: 4 });
+  addFittedText(scene, x + width - 22, y + height / 2, entry.score.toLocaleString("de-DE"), hudTextStyle(24, "#ffffff"), 118, { originX: 1, depth: 4 });
   return graphic;
 }
 
@@ -3274,6 +3290,15 @@ function titleStyle(size, color) {
     stroke: "#10314c",
     strokeThickness: 8,
   };
+}
+
+function addFittedText(scene, x, y, value, style, maxWidth, options = {}) {
+  const text = scene.add.text(x, y, value, style);
+  text.setOrigin(options.originX ?? 0, options.originY ?? 0.5);
+  text.setDepth(options.depth ?? 4);
+  const measuredWidth = Math.max(1, text.width);
+  text.setScale(Math.min(1, maxWidth / measuredWidth));
+  return text;
 }
 
 function readStats() {
