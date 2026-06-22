@@ -8,10 +8,15 @@ const STORAGE_KEY = "duck-dash-stats";
 const PLAYER_NAME_KEY = "duck-dash-player-name";
 const DEFAULT_PLAYER_NAME = "BadeEnte";
 const FALLBACK_NAMES = ["QuakMeister", "SplashKing", "DuckHero", "BadeEnte", "WaterNinja"];
-const COLLECTIBLE_LANES = [292, 256, 220];
-const DIVE_MIN_DURATION = 260;
-const DIVE_MAX_DURATION = 680;
-const DIVE_RECOVERY_DURATION = 260;
+const COLLECTIBLE_LANES = [
+  { name: "top", y: WATER_SURFACE_Y - 132, underwater: false },
+  { name: "surface", y: WATER_SURFACE_Y + 6, underwater: false },
+  { name: "underwater", y: WATER_SURFACE_Y + 108, underwater: true },
+];
+const DIVE_MIN_DURATION = 420;
+const DIVE_MAX_DURATION = 920;
+const DIVE_RECOVERY_DURATION = 220;
+const DUCK_DIVE_Y = WATER_SURFACE_Y + 86;
 const DUCK_HOME_X = 220;
 const DUCK_MIN_X = 72;
 const DUCK_MAX_X = 720;
@@ -244,7 +249,7 @@ class MenuScene extends Phaser.Scene {
     highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
 
     this.add
-      .text(GAME_WIDTH / 2, 692, "Space / Tap = Springen   Pfeil runter / Swipe = Tauchen   Links/Rechts = Driften", {
+      .text(GAME_WIDTH / 2, 692, "Space / W / Tap = Springen   Pfeil runter / S / Swipe = Tauchen   Links/Rechts = Driften", {
         fontFamily: "Trebuchet MS",
         fontSize: "17px",
         fontStyle: "700",
@@ -409,8 +414,8 @@ class GameScene extends Phaser.Scene {
     this.lastComboAt = 0;
     this.lastMilestone = 0;
     this.speed = 300;
-    this.spawnDelay = 1700;
-    this.collectDelay = 980;
+    this.spawnDelay = 1150;
+    this.collectDelay = 760;
     this.lastGroundedAt = 0;
     this.wasGrounded = true;
     this.lastAirVelocityY = 0;
@@ -427,6 +432,7 @@ class GameScene extends Phaser.Scene {
     this.diveQueuedUntil = 0;
     this.diveQueuedHeld = false;
     this.diveRecoverUntil = 0;
+    this.keyboardDiveActive = false;
     this.lastDiveBubbleAt = 0;
     this.diveWake = null;
     this.diveShade = null;
@@ -552,11 +558,14 @@ class GameScene extends Phaser.Scene {
 
   createControls() {
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.wasd = this.input.keyboard.addKeys("A,D");
+    this.wasd = this.input.keyboard.addKeys("A,D,S,W");
     this.input.keyboard.on("keydown-SPACE", () => this.jump());
     this.input.keyboard.on("keydown-UP", () => this.jump());
+    this.input.keyboard.on("keydown-W", () => this.jump());
     this.input.keyboard.on("keydown-DOWN", () => this.dive(true));
+    this.input.keyboard.on("keydown-S", () => this.dive(true));
     this.input.keyboard.on("keyup-DOWN", () => this.releaseDive());
+    this.input.keyboard.on("keyup-S", () => this.releaseDive());
     this.input.keyboard.on("keydown-ESC", () => this.togglePause());
 
     this.input.on("pointerdown", (pointer) => {
@@ -644,44 +653,44 @@ class GameScene extends Phaser.Scene {
   }
 
   handlePausePointer(pointer) {
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 388, "WEITER")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 382, "WEITER")) {
       this.resumeGame();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 468, "NEUSTART")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 456, "NEUSTART")) {
       this.scene.restart();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 548, "BEENDEN")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 530, "BEENDEN")) {
       this.exitToMenu();
     }
   }
 
   handleGameOverPointer(pointer) {
     const isTopFive = this.stats.scores.some((entry) => entry.id === this.resultEntryId);
-    const buttonY = isTopFive ? 578 : 486;
+    const buttonY = isTopFive ? 574 : 492;
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 496, "SPEICHERN") && this.nameInput) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 468, "SPEICHERN") && this.nameInput) {
       this.persistGameResult(this.nameInput.value);
       this.destroyNameInput();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2 - 210, buttonY, "NOCHMAL")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2 - 202, buttonY, "NOCHMAL")) {
       this.destroyNameInput();
       this.scene.restart();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2 + 40, buttonY, "HIGHSCORE")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, buttonY, "HIGHSCORE")) {
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2 + 275, buttonY, "MENUE")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2 + 202, buttonY, "MENUE")) {
       this.destroyNameInput();
       this.scene.start("MenuScene");
     }
@@ -718,6 +727,7 @@ class GameScene extends Phaser.Scene {
     this.updateHud();
     this.expireCombo();
     this.updatePowerUpState();
+    this.updateKeyboardDiveInput();
     this.updateDiveState();
     this.processQueuedDive();
     this.syncDiveVisual();
@@ -798,7 +808,10 @@ class GameScene extends Phaser.Scene {
     this.diveUntil = this.time.now + DIVE_MIN_DURATION;
     SoundFX.unlock();
     SoundFX.dive();
-    this.duck.setVelocityY(520);
+    this.duck.body.allowGravity = false;
+    this.duck.body.checkCollision.down = false;
+    this.duck.setVelocityY(0);
+    this.duck.setY(Phaser.Math.Linear(this.duck.y, DUCK_DIVE_Y, 0.28));
     this.duck.setAngle(18);
     this.duck.setAlpha(0.72);
     this.duck.setTint(0x6ff4ff);
@@ -847,6 +860,20 @@ class GameScene extends Phaser.Scene {
     this.startDive(this.diveQueuedHeld);
   }
 
+  updateKeyboardDiveInput() {
+    const keyboardDive = Boolean(this.cursors.down?.isDown || this.wasd.S?.isDown);
+    if (keyboardDive) {
+      this.keyboardDiveActive = true;
+      this.dive(true);
+      return;
+    }
+
+    if (this.keyboardDiveActive) {
+      this.keyboardDiveActive = false;
+      this.releaseDive();
+    }
+  }
+
   spawnObstacle() {
     if (WATER_TUNING_MODE || this.isGameOver || this.isPaused) {
       return;
@@ -859,7 +886,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.5,
         speedBoost: 10,
         body: [170, 96, 45, 20],
-        gap: 660,
+        gap: 470,
         mode: "jump",
         prompt: "DRUEBER!",
       },
@@ -869,7 +896,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.62,
         speedBoost: 14,
         body: [164, 110, 60, 22],
-        gap: 740,
+        gap: 540,
         mode: "jump",
         prompt: "WEIT DRUEBER!",
         visual: "soapstack",
@@ -881,7 +908,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.5,
         speedBoost: 18,
         body: [230, 98, 58, 56],
-        gap: 760,
+        gap: 540,
         mode: "dive",
         prompt: "TAUCH!",
       },
@@ -891,7 +918,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.42,
         speedBoost: 16,
         body: [150, 102, 40, 56],
-        gap: 800,
+        gap: 570,
         mode: "dive",
         prompt: "TAUCH!",
         labelOffset: 124,
@@ -902,7 +929,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.18,
         speedBoost: 12,
         body: [840, 104, -360, 54],
-        gap: 820,
+        gap: 610,
         mode: "dive",
         prompt: "TIEF TAUCHEN!",
         visual: "foamgate",
@@ -914,7 +941,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.42,
         speedBoost: 24,
         body: [168, 90, 88, 44],
-        gap: 760,
+        gap: 560,
         mode: "stomp",
         prompt: "DRAUF!",
       },
@@ -924,7 +951,7 @@ class GameScene extends Phaser.Scene {
         scale: 0.31,
         speedBoost: 12,
         body: [253, 131, 185, 228],
-        gap: 780,
+        gap: 580,
         mode: "underwater",
         prompt: "OBEN BLEIBEN!",
         labelOffset: 142,
@@ -935,13 +962,13 @@ class GameScene extends Phaser.Scene {
         scale: 0.27,
         speedBoost: 18,
         body: [276, 148, 184, 232],
-        gap: 840,
+        gap: 630,
         mode: "underwater",
         prompt: "NICHT TAUCHEN!",
         labelOffset: 156,
       },
     ];
-    const allowed = this.runTime < 18 ? options.slice(0, 3) : this.runTime < 38 ? options.slice(0, 5) : options;
+    const allowed = this.runTime < 10 ? options.slice(0, 3) : this.runTime < 28 ? options.slice(0, 6) : options;
     const pick = this.getNextObstacle(allowed);
     if (!this.hasObstacleGap(pick.gap)) {
       return;
@@ -1049,24 +1076,24 @@ class GameScene extends Phaser.Scene {
     const isJump = config.mode === "jump";
     const points = isDive
       ? [
-          { x: -290, y: WATERLINE - 42, key: "pearlBlue" },
-          { x: -170, y: WATERLINE - 55, key: "pearlBlue" },
-          { x: 58, y: WATERLINE - 58, key: "pearlGold" },
-          { x: 158, y: WATERLINE - 82, key: "pearlPink" },
+          { x: -290, y: WATER_SURFACE_Y + 82, key: "pearlBlue", underwater: true },
+          { x: -170, y: WATER_SURFACE_Y + 104, key: "pearlBlue", underwater: true },
+          { x: 58, y: WATER_SURFACE_Y + 116, key: "pearlGold", underwater: true },
+          { x: 158, y: WATER_SURFACE_Y + 92, key: "pearlPink", underwater: true },
         ]
       : isJump
         ? [
-            { x: -236, y: WATERLINE - 102, key: "pearlPink" },
-            { x: -126, y: WATERLINE - 162, key: "pearlBlue" },
-            { x: 4, y: WATERLINE - 194, key: "pearlGold" },
-            { x: 140, y: WATERLINE - 142, key: "pearlBlue" },
+            { x: -236, y: WATER_SURFACE_Y - 54, key: "pearlPink" },
+            { x: -126, y: WATER_SURFACE_Y - 104, key: "pearlBlue" },
+            { x: 4, y: WATER_SURFACE_Y - 132, key: "pearlGold" },
+            { x: 140, y: WATER_SURFACE_Y - 92, key: "pearlBlue" },
           ]
         : [
-          { x: -248, y: WATERLINE - 116, key: "pearlPink" },
-          { x: -136, y: WATERLINE - 182, key: "pearlBlue" },
-          { x: -20, y: WATERLINE - 224, key: "pearlGold" },
-          { x: 104, y: WATERLINE - 184, key: "pearlBlue" },
-          { x: 202, y: WATERLINE - 128, key: "pearlPink" },
+          { x: -248, y: WATER_SURFACE_Y + 8, key: "pearlPink" },
+          { x: -136, y: WATER_SURFACE_Y - 44, key: "pearlBlue" },
+          { x: -20, y: WATER_SURFACE_Y - 104, key: "pearlGold" },
+          { x: 104, y: WATER_SURFACE_Y + 108, key: "pearlBlue", underwater: true },
+          { x: 202, y: WATER_SURFACE_Y + 12, key: "pearlPink" },
         ];
 
     points.forEach((point, index) => {
@@ -1075,7 +1102,7 @@ class GameScene extends Phaser.Scene {
           return;
         }
 
-        this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId);
+        this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId, { underwater: point.underwater });
       });
     });
   }
@@ -1117,15 +1144,21 @@ class GameScene extends Phaser.Scene {
     }
 
     const roll = Phaser.Math.Between(1, 100);
-    if (this.runTime > 10 && roll > 84) {
-      const underwaterY = Phaser.Math.Between(WATERLINE + 54, WATERLINE + 118);
-      this.spawnPearlAt(GAME_WIDTH + 100, underwaterY, "underwaterPearls", -this.speed * 0.72, null, { underwater: true });
+    const laneRoll = Phaser.Math.Between(1, 100);
+    const lane =
+      laneRoll > 66
+        ? COLLECTIBLE_LANES[2]
+        : laneRoll > 34
+          ? COLLECTIBLE_LANES[1]
+          : COLLECTIBLE_LANES[0];
+
+    if (lane.underwater && this.runTime > 8 && roll > 86) {
+      this.spawnPearlAt(GAME_WIDTH + 100, lane.y + Phaser.Math.Between(-18, 18), "underwaterPearls", -this.speed * 0.72, null, { underwater: true });
       return;
     }
 
     const key = roll > 96 ? "starfishBonus" : roll > 90 ? "shellPearl" : roll > 78 ? "pearlGold" : roll > 44 ? "pearlBlue" : "pearlPink";
-    const safeLane = Phaser.Utils.Array.GetRandom(COLLECTIBLE_LANES);
-    this.spawnPearlAt(GAME_WIDTH + 100, safeLane, key, -this.speed * 0.78);
+    this.spawnPearlAt(GAME_WIDTH + 100, lane.y + Phaser.Math.Between(-12, 12), key, -this.speed * 0.78, null, { underwater: lane.underwater });
   }
 
   spawnPowerUp() {
@@ -1495,16 +1528,16 @@ class GameScene extends Phaser.Scene {
     const isNewHighscore = finalScore > previousHighscore;
     const isTopFive = nextStats.scores.some((entry) => entry.id === this.resultEntryId);
 
-    const shade = makeScreenShade(this, 0.68, 30);
-    const card = makeGlassPanel(this, 310, 88, 660, 552, 31);
-    const trophy = this.add.image(430, 184, "uiTrophy").setScale(0.16).setDepth(32);
-    const gameOverDuck = this.add.image(850, 226, "duckGameOver").setScale(0.24).setDepth(32);
+    const shade = makeScreenShade(this, 0.62, 30);
+    const card = makeGlassPanel(this, 338, 84, 604, 560, 31);
+    const trophy = this.add.image(452, 218, "uiTrophy").setScale(0.105).setAlpha(0.92).setDepth(32);
+    const gameOverDuck = this.add.image(828, 218, "duckGameOver").setScale(0.17).setAlpha(0.92).setDepth(32);
 
     const title = isNewHighscore ? "NEUER ENTENREKORD!" : "ENTE GESTOPPT";
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
-    this.add.text(GAME_WIDTH / 2, 158, title, titleStyle(44, titleColor)).setOrigin(0.5).setDepth(32);
+    this.add.text(GAME_WIDTH / 2, 148, title, titleStyle(38, titleColor)).setOrigin(0.5).setDepth(32);
     const scoreText = this.add
-      .text(GAME_WIDTH / 2, 258, `${finalScore.toLocaleString("de-DE")}`, titleStyle(76, "#ffffff"))
+      .text(GAME_WIDTH / 2, 246, `${finalScore.toLocaleString("de-DE")}`, titleStyle(68, "#ffffff"))
       .setOrigin(0.5)
       .setDepth(32)
       .setScale(0.78);
@@ -1517,9 +1550,9 @@ class GameScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        334,
+        318,
         `Perlen ${this.pearls.toLocaleString("de-DE")}   Highscore ${nextStats.highscore.toLocaleString("de-DE")}`,
-        hudTextStyle(26, "#ffd43f"),
+        hudTextStyle(23, "#ffd43f"),
       )
       .setOrigin(0.5)
       .setDepth(32);
@@ -1527,10 +1560,10 @@ class GameScene extends Phaser.Scene {
     let saveButton = null;
     let nameLabel = null;
     if (isTopFive) {
-      nameLabel = this.add.text(GAME_WIDTH / 2, 390, "Name fuer die Bestenliste", hudTextStyle(20, "#9df6ff")).setOrigin(0.5).setDepth(32);
-      this.add.image(GAME_WIDTH / 2, 436, "uiInputName").setDisplaySize(338, 58).setDepth(32);
-      this.createNameInput(readPlayerName(), 482, 414, 316, 44);
-      saveButton = makeButton(this, GAME_WIDTH / 2, 496, "SPEICHERN");
+      nameLabel = this.add.text(GAME_WIDTH / 2, 368, "Name fuer die Bestenliste", hudTextStyle(19, "#9df6ff")).setOrigin(0.5).setDepth(32);
+      this.add.image(GAME_WIDTH / 2, 410, "uiInputName").setDisplaySize(318, 52).setDepth(32);
+      this.createNameInput(readPlayerName(), 492, 391, 296, 40);
+      saveButton = makeButton(this, GAME_WIDTH / 2, 468, "SPEICHERN");
       saveButton.setDepth(32);
       saveButton.on("pointerdown", () => {
         const savedStats = this.persistGameResult(this.nameInput?.value || readPlayerName());
@@ -1557,22 +1590,22 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const buttonY = isTopFive ? 578 : 486;
-    const again = makeButton(this, GAME_WIDTH / 2 - 210, buttonY, "NOCHMAL");
+    const buttonY = isTopFive ? 574 : 492;
+    const again = makeButton(this, GAME_WIDTH / 2 - 202, buttonY, "NOCHMAL");
     again.setDepth(32);
     again.on("pointerdown", () => {
       this.destroyNameInput();
       this.scene.restart();
     });
 
-    const highscore = makeButton(this, GAME_WIDTH / 2 + 40, buttonY, "HIGHSCORE");
+    const highscore = makeButton(this, GAME_WIDTH / 2, buttonY, "HIGHSCORE");
     highscore.setDepth(32);
     highscore.on("pointerdown", () => {
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
     });
 
-    const menu = makeButton(this, GAME_WIDTH / 2 + 275, buttonY, "MENUE");
+    const menu = makeButton(this, GAME_WIDTH / 2 + 202, buttonY, "MENUE");
     menu.setDepth(32);
     menu.on("pointerdown", () => {
       this.destroyNameInput();
@@ -1671,26 +1704,26 @@ class GameScene extends Phaser.Scene {
   showPauseOverlay() {
     this.resetTouchDrift();
     this.destroyPauseOverlay();
-    const shade = makeScreenShade(this, 0.54, 40);
-    const card = makeGlassPanel(this, 396, 130, 488, 470, 41);
-    const icon = this.add.image(GAME_WIDTH / 2, 194, "uiPause").setScale(0.14).setDepth(42);
-    const title = this.add.text(GAME_WIDTH / 2, 270, "PAUSE", titleStyle(58, "#ffd43f")).setOrigin(0.5).setDepth(42);
+    const shade = makeScreenShade(this, 0.5, 40);
+    const card = makeGlassPanel(this, 426, 132, 428, 456, 41);
+    const icon = this.add.image(GAME_WIDTH / 2, 194, "uiPause").setScale(0.11).setDepth(42);
+    const title = this.add.text(GAME_WIDTH / 2, 264, "PAUSE", titleStyle(50, "#ffd43f")).setOrigin(0.5).setDepth(42);
     const stats = this.add
       .text(
         GAME_WIDTH / 2,
-        322,
+        316,
         `${Math.floor(this.score).toLocaleString("de-DE")} Punkte   ${this.pearls.toLocaleString("de-DE")} Perlen`,
-        hudTextStyle(24, "#9df6ff"),
+        hudTextStyle(22, "#9df6ff"),
       )
       .setOrigin(0.5)
       .setDepth(42);
-    const resume = makeButton(this, GAME_WIDTH / 2, 388, "WEITER");
+    const resume = makeButton(this, GAME_WIDTH / 2, 382, "WEITER");
     resume.setDepth(43);
     resume.on("pointerdown", () => this.resumeGame());
-    const restart = makeButton(this, GAME_WIDTH / 2, 468, "NEUSTART");
+    const restart = makeButton(this, GAME_WIDTH / 2, 456, "NEUSTART");
     restart.setDepth(43);
     restart.on("pointerdown", () => this.scene.restart());
-    const exit = makeButton(this, GAME_WIDTH / 2, 548, "BEENDEN");
+    const exit = makeButton(this, GAME_WIDTH / 2, 530, "BEENDEN");
     exit.setDepth(43);
     exit.on("pointerdown", () => this.exitToMenu());
 
@@ -1813,6 +1846,10 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.duck.body.allowGravity = false;
+    this.duck.setVelocityY(0);
+    this.duck.y = Phaser.Math.Linear(this.duck.y, DUCK_DIVE_Y, 0.18);
+    this.duck.setAlpha(0.68 + Math.sin(this.time.now / 90) * 0.04);
     this.diveWake?.setPosition(this.duck.x + 28, this.duck.y + 42);
     this.diveShade?.setPosition(this.duck.x + 30, this.duck.y + 52);
     this.diveStatusText?.setPosition(this.duck.x + 128, this.duck.y + 4);
@@ -1954,7 +1991,9 @@ class GameScene extends Phaser.Scene {
     this.diveHeld = false;
     this.diveRecoverUntil = this.time.now + DIVE_RECOVERY_DURATION;
     this.setDuckNormalBody();
-    this.duck.setVelocityY(-360);
+    this.duck.body.allowGravity = true;
+    this.duck.body.checkCollision.down = true;
+    this.duck.setVelocityY(-460);
     this.duck.setAngle(-10);
     this.duck.setAlpha(1);
     if (this.time.now >= this.invulnerableUntil && !this.isTurboActive()) {
@@ -2301,15 +2340,15 @@ class GameScene extends Phaser.Scene {
 
   getObstacleDelay() {
     if (this.runTime > 95) {
-      return 1080;
+      return 920;
     }
     if (this.runTime > 55) {
-      return 1250;
+      return 1020;
     }
     if (this.runTime > 25) {
-      return 1450;
+      return 1120;
     }
-    return 1700;
+    return 1220;
   }
 
   showFloatingText(message, x, y, color) {
@@ -2623,11 +2662,24 @@ function addWaterGlints(scene, depth) {
 }
 
 function makeGlassPanel(scene, x, y, width, height, depth = 2) {
-  const texture = width >= height ? "uiPanelLarge" : "uiPanelSmall";
-  const panel = scene.add.image(x + width / 2, y + height / 2, texture);
+  const panel = scene.add.graphics();
   panel.setDepth(depth);
-  panel.setDisplaySize(width, height);
-  panel.setAlpha(0.92);
+  panel.fillStyle(0x051d35, 0.22);
+  panel.fillRoundedRect(x + 10, y + 12, width, height, 34);
+  panel.fillStyle(0x9df6ff, 0.18);
+  panel.fillRoundedRect(x - 5, y - 5, width + 10, height + 10, 34);
+  panel.fillStyle(0x8feaff, 0.94);
+  panel.fillRoundedRect(x, y, width, height, 30);
+  panel.fillStyle(0xd9fbff, 0.28);
+  panel.fillRoundedRect(x + 18, y + 18, width - 36, height * 0.42, 22);
+  panel.fillStyle(0x0c8ed0, 0.14);
+  panel.fillRoundedRect(x + 18, y + height * 0.58, width - 36, height * 0.34, 22);
+  panel.lineStyle(7, 0xffffff, 0.88);
+  panel.strokeRoundedRect(x, y, width, height, 30);
+  panel.lineStyle(4, 0x0878ca, 0.7);
+  panel.strokeRoundedRect(x + 14, y + 14, width - 28, height - 28, 22);
+  panel.fillStyle(0xffffff, 0.18);
+  panel.fillRoundedRect(x + 34, y + 26, width - 68, Math.max(32, height * 0.18), 22);
   return panel;
 }
 
@@ -2725,29 +2777,31 @@ function makePauseIconButton(scene, x, y) {
 
 function makeButton(scene, x, y, label) {
   const container = scene.add.container(x, y);
-  const width = Math.max(236, label.length * 19);
+  const width = Math.max(190, label.length * 17 + 38);
+  const height = 58;
   const halfWidth = width / 2;
+  const halfHeight = height / 2;
   const colors = getButtonColors(label);
   const bg = scene.add.graphics();
   bg.fillStyle(colors.fill, 1);
-  bg.fillRoundedRect(-halfWidth, -34, width, 68, 18);
+  bg.fillRoundedRect(-halfWidth, -halfHeight, width, height, 17);
   bg.lineStyle(4, colors.stroke, 0.82);
-  bg.strokeRoundedRect(-halfWidth, -34, width, 68, 18);
+  bg.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 17);
   bg.fillStyle(0xffffff, 0.2);
-  bg.fillRoundedRect(-halfWidth + 12, -24, width - 24, 14, 10);
+  bg.fillRoundedRect(-halfWidth + 12, -halfHeight + 10, width - 24, 12, 10);
 
   const text = scene.add.text(0, 1, label, {
     fontFamily: "Trebuchet MS",
-    fontSize: "28px",
+    fontSize: "24px",
     fontStyle: "900",
     color: "#ffffff",
     stroke: colors.textStroke,
-    strokeThickness: 5,
+    strokeThickness: 4,
   });
   text.setOrigin(0.5);
   container.add([bg, text]);
-  container.setSize(width, 68);
-  container.setInteractive(new Phaser.Geom.Rectangle(-halfWidth, -34, width, 68), Phaser.Geom.Rectangle.Contains);
+  container.setSize(width, height);
+  container.setInteractive(new Phaser.Geom.Rectangle(-halfWidth, -halfHeight, width, height), Phaser.Geom.Rectangle.Contains);
   container.input.cursor = "pointer";
   container.on("pointerover", () => container.setScale(1.04));
   container.on("pointerout", () => container.setScale(1));
@@ -2767,8 +2821,8 @@ function getButtonColors(label) {
 }
 
 function isWithinButton(pointer, x, y, label) {
-  const width = Math.max(236, label.length * 19);
-  return Math.abs(pointer.x - x) <= width / 2 && Math.abs(pointer.y - y) <= 34;
+  const width = Math.max(190, label.length * 17 + 38);
+  return Math.abs(pointer.x - x) <= width / 2 && Math.abs(pointer.y - y) <= 29;
 }
 
 function isWithinRoundButton(pointer, x, y) {
