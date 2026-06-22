@@ -679,27 +679,24 @@ class GameScene extends Phaser.Scene {
 
   handleGameOverPointer(pointer) {
     const isTopFive = this.stats.scores.some((entry) => entry.id === this.resultEntryId);
-    const buttonY = isTopFive ? 618 : 588;
-
-    if (isWithinButton(pointer, 784, 550, "SPEICHERN", 230) && this.nameInput) {
-      this.persistGameResult(this.nameInput.value);
-      this.destroyNameInput();
-      return;
-    }
+    const buttonY = isTopFive ? 590 : 576;
 
     if (isWithinButton(pointer, 412, buttonY, "NOCHMAL", 190)) {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.restart();
       return;
     }
 
-    if (isWithinButton(pointer, 640, buttonY, "BESTENLISTE", 238)) {
+    if (isWithinButton(pointer, 640, buttonY, "HIGHSCORE", 196)) {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
       return;
     }
 
     if (isWithinButton(pointer, 852, buttonY, "MENÜ", 166)) {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.start("MenuScene");
     }
@@ -1546,14 +1543,15 @@ class GameScene extends Phaser.Scene {
     const isNewHighscore = finalScore > previousHighscore;
     const isTopFive = nextStats.scores.some((entry) => entry.id === this.resultEntryId);
 
-    const shade = makeScreenShade(this, 0.58, 30);
-    const card = makeGlassPanel(this, 238, 82, 804, 568, 31, 0x086fc0);
-    const gameOverDuck = this.add.image(414, 368, "duckGameOver").setScale(0.32).setDepth(32);
+    const shade = makeScreenShade(this, 0.54, 30);
+    const card = makeGlassPanel(this, 260, 96, 760, 522, 31, 0x086fc0);
+    const gameOverDuck = this.add.image(412, 360, "duckGameOver").setScale(0.3).setDepth(32);
 
     const title = isNewHighscore ? "NEUER ENTENREKORD!" : "ENTE GESTOPPT";
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
-    this.add.text(GAME_WIDTH / 2, 142, title, titleStyle(52, titleColor)).setOrigin(0.5).setDepth(32);
-    makeScoreBox(this, 650, 208, 268, 122, "", "", "#ffffff", 32);
+    const titleSize = isNewHighscore ? 44 : 50;
+    this.add.text(GAME_WIDTH / 2, 152, title, titleStyle(titleSize, titleColor)).setOrigin(0.5).setDepth(32);
+    makeScoreBox(this, 640, 218, 288, 118, "", "", "#ffffff", 32);
     const scoreText = this.add
       .text(784, 256, `${finalScore.toLocaleString("de-DE")}`, titleStyle(62, "#ffffff"))
       .setOrigin(0.5)
@@ -1565,32 +1563,22 @@ class GameScene extends Phaser.Scene {
       duration: 260,
       ease: "Back.out",
     });
-    this.add.text(784, 306, "PUNKTE", hudTextStyle(20, "#ffffff")).setOrigin(0.5).setDepth(33);
-    makeScoreBox(this, 650, 364, 268, 86, "", "", "#ff70ad", 32);
-    this.add.image(706, 407, "pearlPink").setScale(0.28).setDepth(33);
-    this.add.text(802, 407, this.pearls.toLocaleString("de-DE"), titleStyle(38, "#ffffff")).setOrigin(0.5).setDepth(33);
+    this.add.text(784, 306, "PUNKTE", hudTextStyle(19, "#ffffff")).setOrigin(0.5).setDepth(33);
+    makeScoreBox(this, 640, 358, 288, 78, "", "", "#ff70ad", 32);
+    this.add.image(716, 397, "pearlPink").setScale(0.25).setDepth(33);
+    this.add.text(812, 397, this.pearls.toLocaleString("de-DE"), titleStyle(34, "#ffffff")).setOrigin(0.5).setDepth(33);
     if (!isTopFive) {
       this.add
-        .text(784, 504, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
+        .text(784, 490, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
         .setOrigin(0.5)
         .setDepth(32);
     }
 
-    let saveButton = null;
     let nameLabel = null;
     if (isTopFive) {
-      nameLabel = this.add.text(784, 462, "Name fuer die Bestenliste", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
-      this.add.image(784, 498, "uiInputName").setDisplaySize(268, 44).setDepth(32);
-      this.createNameInput(readPlayerName(), 650, 481, 268, 34);
-      saveButton = makeButton(this, 784, 550, "SPEICHERN", 230, { icon: false, fontSize: 24 });
-      saveButton.setDepth(32);
-      saveButton.on("pointerdown", () => {
-        const savedStats = this.persistGameResult(this.nameInput?.value || readPlayerName());
-        this.destroyNameInput();
-        nameLabel?.setText(`Gespeichert als ${savedStats.scores.find((entry) => entry.id === this.resultEntryId)?.name || readPlayerName()}`);
-        saveButton?.setAlpha(0.5);
-        saveButton?.disableInteractive();
-      });
+      nameLabel = this.add.text(784, 460, "BESTENLISTE NAME", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
+      this.add.image(784, 498, "uiInputName").setDisplaySize(288, 42).setDepth(32);
+      this.createNameInput(readPlayerName(), 640, 482, 288, 32);
     }
 
     if (isNewHighscore) {
@@ -1609,17 +1597,19 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const buttonY = isTopFive ? 618 : 588;
+    const buttonY = isTopFive ? 590 : 576;
     const again = makeButton(this, 412, buttonY, "NOCHMAL", 190, { icon: false, fontSize: 23 });
     again.setDepth(32);
     again.on("pointerdown", () => {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.restart();
     });
 
-    const highscore = makeButton(this, 640, buttonY, "BESTENLISTE", 238, { icon: false, fontSize: 22 });
+    const highscore = makeButton(this, 640, buttonY, "HIGHSCORE", 196, { icon: false, fontSize: 23 });
     highscore.setDepth(32);
     highscore.on("pointerdown", () => {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
     });
@@ -1627,11 +1617,20 @@ class GameScene extends Phaser.Scene {
     const menu = makeButton(this, 852, buttonY, "MENÜ", 166, { icon: false, fontSize: 23 });
     menu.setDepth(32);
     menu.on("pointerdown", () => {
+      this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.start("MenuScene");
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyNameInput());
+  }
+
+  savePendingGameOverName() {
+    if (!this.nameInput) {
+      return;
+    }
+
+    this.persistGameResult(this.nameInput.value);
   }
 
   persistGameResult(name) {
@@ -1679,11 +1678,12 @@ class GameScene extends Phaser.Scene {
     input.style.width = `${(width / GAME_WIDTH) * rect.width}px`;
     input.style.height = `${(height / GAME_HEIGHT) * rect.height}px`;
     input.style.zIndex = "1000";
-    input.style.border = "3px solid rgba(157,246,255,0.95)";
-    input.style.borderRadius = "14px";
+    input.style.border = "2px solid rgba(157,246,255,0.95)";
+    input.style.borderRadius = "12px";
     input.style.background = "rgba(5,38,64,0.92)";
     input.style.color = "#ffffff";
-    input.style.font = "900 22px Trebuchet MS, sans-serif";
+    input.style.font = "900 17px Trebuchet MS, sans-serif";
+    input.style.lineHeight = "1";
     input.style.textAlign = "center";
     input.style.outline = "none";
     input.style.boxShadow = "0 8px 24px rgba(0,0,0,0.28)";
