@@ -10,7 +10,7 @@ Meine Position: Erst die vier Regel-Signale erstellen, dann testen. Danach entsc
 
 ## Batch 1: wirklich produzieren
 
-Diese vier Assets sind die naechsten sinnvollen Grafiken. Sie muessen als freigestellte PNGs in `assets/` landen. Bis sie vorhanden sind, nutzt das Spiel Code-basierte Platzhalter-Signale.
+Diese vier Assets liegen jetzt als Rohgrafiken aus `/input/newnew` in `assets/` und sind im Spiel aktiv. Sie muessen spaeter nur noch unter denselben Dateinamen freigestellt ersetzt werden.
 
 | Datei | Geplanter Key | Zweck | Prioritaet |
 |---|---|---|---|

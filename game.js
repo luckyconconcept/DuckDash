@@ -28,10 +28,10 @@ const STOMP_MIN_VELOCITY_Y = -180;
 const STOMP_HORIZONTAL_GRACE = 112;
 const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
 const MODE_CUE_CONFIG = {
-  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f },
-  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8 },
-  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f },
-  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76 },
+  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalJump" },
+  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8, icon: "uiSignalDive" },
+  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalStomp" },
+  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76, icon: "uiSignalStayUp" },
 };
 const OBSTACLE_SEQUENCES = {
   early: [
@@ -238,6 +238,10 @@ class BootScene extends Phaser.Scene {
     this.load.image("fxQuackWave", "assets/fx_quack_wave.png?v=20260622-assets-ui1");
     this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
     this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
+    this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260622-newnew1");
+    this.load.image("uiSignalDive", "assets/ui_signal_dive.png?v=20260622-newnew1");
+    this.load.image("uiSignalStomp", "assets/ui_signal_stomp.png?v=20260622-newnew1");
+    this.load.image("uiSignalStayUp", "assets/ui_signal_stay_up.png?v=20260622-newnew1");
   }
 
   create() {
@@ -1192,8 +1196,14 @@ class GameScene extends Phaser.Scene {
 
     const ring = this.add.circle(0, 0, 34, cueConfig.fill, 0.42);
     ring.setStrokeStyle(4, 0xffffff, 0.7);
-    const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
-    cue.add([ring, text]);
+    if (this.textures.exists(cueConfig.icon)) {
+      const icon = this.add.image(0, 0, cueConfig.icon).setScale(0.056).setAlpha(0.96);
+      const text = this.add.text(0, 45, cueConfig.text, hudTextStyle(11, cueConfig.color)).setOrigin(0.5);
+      cue.add([ring, icon, text]);
+    } else {
+      const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
+      cue.add([ring, text]);
+    }
 
     obstacle.setData("cue", cue);
     obstacle.setData("cueRing", ring);
