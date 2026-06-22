@@ -503,6 +503,7 @@ class GameScene extends Phaser.Scene {
     this.lastDiveBubbleAt = 0;
     this.diveWake = null;
     this.diveShade = null;
+    this.diveBubbleTrail = null;
     this.diveStatusText = null;
     this.shieldCharges = 0;
     this.magnetUntil = 0;
@@ -1121,6 +1122,7 @@ class GameScene extends Phaser.Scene {
     container.setData("cleanup", true);
 
     const wake = this.add.ellipse(0, 78, 176, 32, 0x71f1ff, 0.2);
+    const gate = this.add.image(0, 0, "obstacleBubbleGate").setScale(0.36).setAlpha(0.92);
     const bubbles = [];
     for (let index = 0; index < 8; index += 1) {
       const side = index % 2 === 0 ? -1 : 1;
@@ -1133,7 +1135,7 @@ class GameScene extends Phaser.Scene {
 
     const cap = this.add.ellipse(0, -88, 130, 32, 0xeaffff, 0.26);
     const base = this.add.ellipse(0, 72, 164, 28, 0xeaffff, 0.2);
-    container.add([wake, base, ...bubbles, cap]);
+    container.add([wake, gate, base, ...bubbles, cap]);
     obstacle.setData("visual", container);
   }
 
@@ -1524,6 +1526,16 @@ class GameScene extends Phaser.Scene {
     this.showFloatingText("TURBO-BLASE!", this.duck.x + 185, this.duck.y - 120, "#ff70ad");
     this.cameras.main.shake(90, 0.003);
     this.burst(this.duck.x + 30, this.duck.y - 6, ["pearlGold", "pearlPink"], 26, 0.13, 180);
+
+    const speedLines = this.add.image(this.duck.x - 42, this.duck.y + 18, "fxSpeedLines").setScale(0.46).setAlpha(0.62).setDepth(6);
+    this.tweens.add({
+      targets: speedLines,
+      x: speedLines.x - 150,
+      alpha: 0,
+      duration: 520,
+      ease: "Cubic.out",
+      onComplete: () => speedLines.destroy(),
+    });
   }
 
   activateQuackBomb() {
@@ -1532,6 +1544,16 @@ class GameScene extends Phaser.Scene {
     this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
     this.cameras.main.shake(120, 0.006);
     this.burst(this.duck.x + 30, this.duck.y - 10, ["pearlGold", "pearlBlue", "quackBombV2"], 22, 0.15, 210);
+
+    const wave = this.add.image(this.duck.x, this.duck.y + 8, "fxQuackWave").setScale(0.16).setAlpha(0.88).setDepth(17);
+    this.tweens.add({
+      targets: wave,
+      scale: 1.05,
+      alpha: 0,
+      duration: 440,
+      ease: "Cubic.out",
+      onComplete: () => wave.destroy(),
+    });
 
     const ring = this.add.circle(this.duck.x, this.duck.y, 18);
     ring.setDepth(18);
@@ -2009,6 +2031,12 @@ class GameScene extends Phaser.Scene {
     this.diveShade?.destroy();
     this.diveShade = this.add.ellipse(this.duck.x + 22, this.duck.y + 52, 190, 72, 0x0ba4c8, 0.24);
     this.diveShade.setDepth(8);
+
+    this.diveBubbleTrail?.destroy();
+    this.diveBubbleTrail = this.add.image(this.duck.x + 16, this.duck.y + 42, "fxUnderwaterBubbles");
+    this.diveBubbleTrail.setScale(0.3);
+    this.diveBubbleTrail.setAlpha(0.58);
+    this.diveBubbleTrail.setDepth(9);
   }
 
   showDiveStatus() {
@@ -2032,6 +2060,8 @@ class GameScene extends Phaser.Scene {
     this.duck.setAlpha(0.68 + Math.sin(this.time.now / 90) * 0.04);
     this.diveWake?.setPosition(this.duck.x + 28, this.duck.y + 42);
     this.diveShade?.setPosition(this.duck.x + 30, this.duck.y + 52);
+    this.diveBubbleTrail?.setPosition(this.duck.x + 20, this.duck.y + 42);
+    this.diveBubbleTrail?.setAlpha(0.5 + Math.sin(this.time.now / 120) * 0.08);
     this.diveStatusText?.setPosition(this.duck.x + 128, this.duck.y + 4);
     this.emitDiveBubble();
   }
@@ -2043,9 +2073,9 @@ class GameScene extends Phaser.Scene {
 
     this.lastDiveBubbleAt = this.time.now;
     const bubble = this.add
-      .image(this.duck.x + Phaser.Math.Between(14, 68), this.duck.y + Phaser.Math.Between(18, 58), "pearlBlue")
-      .setScale(0.08)
-      .setAlpha(0.46)
+      .image(this.duck.x + Phaser.Math.Between(14, 68), this.duck.y + Phaser.Math.Between(18, 58), "fxBubblePop")
+      .setScale(0.11)
+      .setAlpha(0.5)
       .setDepth(9);
     this.tweens.add({
       targets: bubble,
@@ -2198,6 +2228,8 @@ class GameScene extends Phaser.Scene {
     this.diveWake = null;
     this.diveShade?.destroy();
     this.diveShade = null;
+    this.diveBubbleTrail?.destroy();
+    this.diveBubbleTrail = null;
     this.diveStatusText?.destroy();
     this.diveStatusText = null;
     this.splash(this.duck.x - 28, this.duck.y + 48);
