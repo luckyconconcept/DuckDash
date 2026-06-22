@@ -1539,15 +1539,18 @@ class GameScene extends Phaser.Scene {
 
     const shade = makeScreenShade(this, 0.54, 30);
     const card = makeGlassPanel(this, 260, 96, 760, 522, 31, 0x086fc0);
-    const gameOverDuck = this.add.image(412, 360, "duckGameOver").setScale(0.3).setDepth(32);
+    const gameOverDuck = this.add.image(404, 366, "duckGameOver").setScale(0.36).setDepth(32);
+    const resultColumnX = 794;
+    const resultBoxX = 638;
+    const resultBoxWidth = 312;
 
     const title = isNewHighscore ? "NEUER ENTENREKORD!" : "ENTE GESTOPPT";
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
     const titleSize = isNewHighscore ? 44 : 50;
     this.add.text(GAME_WIDTH / 2, 152, title, titleStyle(titleSize, titleColor)).setOrigin(0.5).setDepth(32);
-    makeScoreBox(this, 640, 218, 288, 118, "", "", "#ffffff", 32);
+    makeScoreBox(this, resultBoxX, 218, resultBoxWidth, 118, "", "", "#ffffff", 32);
     const scoreText = this.add
-      .text(784, 256, `${finalScore.toLocaleString("de-DE")}`, titleStyle(62, "#ffffff"))
+      .text(resultColumnX, 256, `${finalScore.toLocaleString("de-DE")}`, titleStyle(62, "#ffffff"))
       .setOrigin(0.5)
       .setDepth(32)
       .setScale(0.78);
@@ -1557,22 +1560,23 @@ class GameScene extends Phaser.Scene {
       duration: 260,
       ease: "Back.out",
     });
-    this.add.text(784, 306, "PUNKTE", hudTextStyle(19, "#ffffff")).setOrigin(0.5).setDepth(33);
-    makeScoreBox(this, 640, 358, 288, 78, "", "", "#ff70ad", 32);
-    this.add.image(716, 397, "pearlPink").setScale(0.25).setDepth(33);
-    this.add.text(812, 397, this.pearls.toLocaleString("de-DE"), titleStyle(34, "#ffffff")).setOrigin(0.5).setDepth(33);
+    this.add.text(resultColumnX, 306, "PUNKTE", hudTextStyle(19, "#ffffff")).setOrigin(0.5).setDepth(33);
+    makeScoreBox(this, resultBoxX, 358, resultBoxWidth, 78, "", "", "#ff70ad", 32);
+    this.add.image(resultColumnX - 50, 397, "pearlPink").setScale(0.25).setDepth(33);
+    this.add.text(resultColumnX + 34, 392, this.pearls.toLocaleString("de-DE"), titleStyle(32, "#ffffff")).setOrigin(0.5).setDepth(33);
+    this.add.text(resultColumnX + 34, 420, "PERLEN", hudTextStyle(15, "#ffffff")).setOrigin(0.5).setDepth(33);
     if (!isTopFive) {
       this.add
-        .text(784, 490, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
+        .text(resultColumnX, 490, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
         .setOrigin(0.5)
         .setDepth(32);
     }
 
     let nameLabel = null;
     if (isTopFive) {
-      nameLabel = this.add.text(784, 460, "BESTENLISTE NAME", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
-      this.add.image(784, 498, "uiInputName").setDisplaySize(288, 42).setDepth(32);
-      this.createNameInput(readPlayerName(), 640, 482, 288, 32);
+      nameLabel = this.add.text(resultColumnX, 460, "BESTENLISTE NAME", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
+      this.add.image(resultColumnX, 498, "uiInputName").setDisplaySize(resultBoxWidth, 42).setDepth(32);
+      this.createNameInput(readPlayerName(), resultBoxX, 482, resultBoxWidth, 32);
     }
 
     if (isNewHighscore) {
