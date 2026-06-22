@@ -522,9 +522,9 @@ class GameScene extends Phaser.Scene {
 
   createHud() {
     this.lifeHud = makeLifePill(this, 24, 24);
-    this.scoreHud = makeHudPill(this, 180, 24, 198, "uiScoreCoin", 0.055, "#ffffff");
+    this.scoreHud = makeHudPill(this, 166, 24, 192, "uiScoreCoin", 0.044, "#ffffff");
     this.scoreText = this.scoreHud.text;
-    this.pearlHud = makeHudPill(this, 398, 24, 152, "uiPearlCounter", 0.055, "#ffd43f");
+    this.pearlHud = makeHudPill(this, 378, 24, 150, "uiPearlCounter", 0.044, "#ffd43f");
     this.pearlText = this.pearlHud.text;
     this.lifeBubbles = this.lifeHud.hearts;
     this.comboText = this.add.text(GAME_WIDTH / 2, 120, "", hudTextStyle(26, "#ffd43f")).setOrigin(0.5).setDepth(21);
@@ -1871,7 +1871,7 @@ class GameScene extends Phaser.Scene {
     this.lifeBubbles.forEach((bubble, index) => {
       const alive = index < this.lives;
       bubble.setAlpha(alive ? 0.86 : 0.2);
-      bubble.setScale(alive ? (index < this.shieldCharges ? 0.076 : 0.068) : 0.052);
+      bubble.setScale(alive ? (index < this.shieldCharges ? 0.058 : 0.052) : 0.04);
       setHeartIconColor(bubble, index < this.shieldCharges ? 0x9df6ff : 0xff3f76);
     });
     this.updatePowerHud();
@@ -2646,8 +2646,8 @@ function makeHudPill(scene, x, y, width, iconKey, iconScale, color) {
   bg.strokeRoundedRect(0, 0, width, 56, 22);
 
   const shine = scene.add.rectangle(18, 9, width - 36, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
-  const icon = scene.add.image(34, 28, iconKey).setScale(iconScale);
-  const text = scene.add.text(66, 28, "0", hudTextStyle(28, color)).setOrigin(0, 0.5);
+  const icon = scene.add.image(30, 28, iconKey).setScale(iconScale);
+  const text = scene.add.text(56, 28, "0", hudTextStyle(27, color)).setOrigin(0, 0.5);
   container.add([bg, shine, icon, text]);
   return { container, text };
 }
@@ -2656,12 +2656,12 @@ function makeLifePill(scene, x, y) {
   const container = scene.add.container(x, y).setDepth(20);
   const bg = scene.add.graphics();
   bg.fillStyle(0x0b62c9, 0.94);
-  bg.fillRoundedRect(0, 0, 136, 56, 22);
+  bg.fillRoundedRect(0, 0, 122, 56, 22);
   bg.lineStyle(4, 0xffffff, 0.64);
-  bg.strokeRoundedRect(0, 0, 136, 56, 22);
+  bg.strokeRoundedRect(0, 0, 122, 56, 22);
 
-  const shine = scene.add.rectangle(18, 9, 100, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
-  const hearts = [0, 1, 2].map((index) => scene.add.image(32 + index * 34, 28, "uiHeart").setScale(0.068));
+  const shine = scene.add.rectangle(16, 9, 90, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
+  const hearts = [0, 1, 2].map((index) => scene.add.image(28 + index * 31, 28, "uiHeart").setScale(0.052));
   container.add([bg, shine, ...hearts]);
   return { container, hearts };
 }
@@ -2674,18 +2674,18 @@ function makeSpecialSlot(scene, x, y, iconKey, label, color) {
   const container = scene.add.container(x, y).setDepth(20);
   const bg = scene.add.graphics();
   bg.fillStyle(0x0b62c9, 0.9);
-  bg.fillCircle(34, 34, 34);
+  bg.fillCircle(34, 34, 31);
   bg.lineStyle(4, 0xffffff, 0.72);
-  bg.strokeCircle(34, 34, 34);
+  bg.strokeCircle(34, 34, 31);
 
-  const glow = scene.add.circle(34, 34, 38, hexColorToNumber(color), 0.12);
-  const icon = scene.add.image(34, 32, iconKey).setScale(0.28);
-  const labelText = scene.add.text(34, 78, label, hudTextStyle(14, "#ffffff")).setOrigin(0.5);
+  const glow = scene.add.circle(34, 34, 34, hexColorToNumber(color), 0.12);
+  const icon = scene.add.image(34, 32, iconKey).setScale(0.22);
+  const labelText = scene.add.text(34, 74, label, hudTextStyle(13, "#ffffff")).setOrigin(0.5);
 
-  const badge = scene.add.container(62, 58);
-  const badgeBg = scene.add.circle(0, 0, 15, 0xff3f9a, 1);
+  const badge = scene.add.container(59, 55);
+  const badgeBg = scene.add.circle(0, 0, 13, 0xff3f9a, 1);
   badgeBg.setStrokeStyle(3, 0xffffff, 0.72);
-  const badgeText = scene.add.text(0, 0, "", hudTextStyle(15, "#ffffff")).setOrigin(0.5);
+  const badgeText = scene.add.text(0, 0, "", hudTextStyle(13, "#ffffff")).setOrigin(0.5);
   badge.add([badgeBg, badgeText]);
   badge.setVisible(false);
 
@@ -2714,7 +2714,7 @@ function hexColorToNumber(color) {
 
 function makePauseIconButton(scene, x, y) {
   const container = scene.add.container(x, y);
-  const icon = scene.add.image(0, 0, "uiPause").setScale(0.105);
+  const icon = scene.add.image(0, 0, "uiPause").setScale(0.092);
   container.add([icon]);
   container.setSize(68, 68);
   container.setInteractive(new Phaser.Geom.Rectangle(-34, -34, 68, 68), Phaser.Geom.Rectangle.Contains);
@@ -2727,15 +2727,21 @@ function makeButton(scene, x, y, label) {
   const container = scene.add.container(x, y);
   const width = Math.max(236, label.length * 19);
   const halfWidth = width / 2;
-  const bg = scene.add.image(0, 0, getButtonTexture(label));
-  bg.setDisplaySize(width, 68);
+  const colors = getButtonColors(label);
+  const bg = scene.add.graphics();
+  bg.fillStyle(colors.fill, 1);
+  bg.fillRoundedRect(-halfWidth, -34, width, 68, 18);
+  bg.lineStyle(4, colors.stroke, 0.82);
+  bg.strokeRoundedRect(-halfWidth, -34, width, 68, 18);
+  bg.fillStyle(0xffffff, 0.2);
+  bg.fillRoundedRect(-halfWidth + 12, -24, width - 24, 14, 10);
 
   const text = scene.add.text(0, 1, label, {
     fontFamily: "Trebuchet MS",
     fontSize: "28px",
     fontStyle: "900",
     color: "#ffffff",
-    stroke: "#a45200",
+    stroke: colors.textStroke,
     strokeThickness: 5,
   });
   text.setOrigin(0.5);
@@ -2748,16 +2754,16 @@ function makeButton(scene, x, y, label) {
   return container;
 }
 
-function getButtonTexture(label) {
+function getButtonColors(label) {
   if (label === "BEENDEN" || label === "MENUE" || label === "MENÜ") {
-    return "uiButtonDanger";
+    return { fill: 0xff3f76, stroke: 0xffffff, textStroke: "#7b1738" };
   }
 
   if (label === "HIGHSCORE" || label === "ZURUECK" || label === "ZURÜCK") {
-    return "uiButtonSecondary";
+    return { fill: 0x2f8ed8, stroke: 0xffffff, textStroke: "#123044" };
   }
 
-  return "uiButtonPrimary";
+  return { fill: 0xffc51f, stroke: 0xffffff, textStroke: "#a45200" };
 }
 
 function isWithinButton(pointer, x, y, label) {
