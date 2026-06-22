@@ -29,10 +29,10 @@ const STOMP_MIN_VELOCITY_Y = -180;
 const STOMP_HORIZONTAL_GRACE = 112;
 const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
 const MODE_CUE_CONFIG = {
-  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalJump" },
-  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8, icon: "uiSignalDive" },
-  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalStomp" },
-  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76, icon: "uiSignalStayUp" },
+  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f },
+  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8 },
+  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f },
+  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76 },
 };
 const OBSTACLE_SEQUENCES = {
   early: [
@@ -3239,22 +3239,21 @@ function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   const minWidth = label === "BESTENLISTE" ? 312 : label === "SPIELEN" ? 292 : 190;
   const width = minWidthOverride ?? Math.max(minWidth, label.length * 17 + (iconKey ? 78 : 38));
   const largeButton = heroButton || width >= 300;
-  const height = largeButton ? 78 : 64;
+  const height = largeButton ? 76 : 64;
   const halfWidth = width / 2;
   const halfHeight = height / 2;
   const colors = getButtonColors(label);
-  const bg = scene.add.graphics();
-  bg.fillStyle(colors.fill, 1);
-  bg.fillRoundedRect(-halfWidth, -halfHeight, width, height, 17);
-  bg.lineStyle(4, colors.stroke, 0.82);
-  bg.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 17);
-  bg.fillStyle(0xffffff, 0.2);
-  bg.fillRoundedRect(-halfWidth + 12, -halfHeight + 10, width - 24, 12, 10);
+  const cropWidth = 664;
+  const cropHeight = 252;
+  const bg = scene.add.image(0, 0, getButtonAssetKey(label));
+  bg.setCrop(28, 54, cropWidth, cropHeight);
+  bg.setScale(width / cropWidth, height / cropHeight);
 
-  const icon = iconKey ? scene.add.image(-halfWidth + (largeButton ? 58 : 48), 0, iconKey).setScale(largeButton ? 0.082 : 0.068) : null;
-  const text = scene.add.text(iconKey ? (largeButton ? 30 : 24) : 0, 1, label, {
+  const icon = iconKey ? scene.add.image(-halfWidth + (largeButton ? 56 : 46), 0, iconKey).setScale(largeButton ? 0.074 : 0.062) : null;
+  const textX = iconKey ? (largeButton ? 28 : 22) : 0;
+  const text = scene.add.text(textX, 0, label, {
     fontFamily: "Trebuchet MS",
-    fontSize: options.fontSize ? `${options.fontSize}px` : largeButton ? (label.length > 10 ? "30px" : "34px") : label.length > 10 ? "23px" : "26px",
+    fontSize: options.fontSize ? `${options.fontSize}px` : largeButton ? (label.length > 10 ? "28px" : "32px") : label.length > 10 ? "21px" : "24px",
     fontStyle: "900",
     color: "#ffffff",
     stroke: colors.textStroke,
@@ -3268,6 +3267,18 @@ function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   container.on("pointerover", () => container.setScale(1.04));
   container.on("pointerout", () => container.setScale(1));
   return container;
+}
+
+function getButtonAssetKey(label) {
+  if (label === "BEENDEN" || label === "MENUE" || label === "MENÜ") {
+    return "uiButtonDanger";
+  }
+
+  if (label === "HIGHSCORE" || label === "BESTENLISTE" || label === "ZURUECK" || label === "ZURÜCK" || label === "NEUSTART") {
+    return "uiButtonSecondary";
+  }
+
+  return "uiButtonPrimary";
 }
 
 function getButtonColors(label) {
@@ -3302,7 +3313,7 @@ function isWithinButton(pointer, x, y, label, minWidthOverride = null) {
   const iconKey = getButtonIcon(label);
   const minWidth = label === "BESTENLISTE" ? 312 : label === "SPIELEN" ? 292 : 190;
   const width = minWidthOverride ?? Math.max(minWidth, label.length * 17 + (iconKey ? 78 : 38));
-  const height = label === "SPIELEN" || label === "BESTENLISTE" || width >= 300 ? 78 : 64;
+  const height = label === "SPIELEN" || label === "BESTENLISTE" || width >= 300 ? 76 : 64;
   return Math.abs(pointer.x - x) <= width / 2 && Math.abs(pointer.y - y) <= height / 2;
 }
 
