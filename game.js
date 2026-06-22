@@ -16,6 +16,7 @@ const COLLECTIBLE_LANES = [
 const DIVE_MIN_DURATION = 420;
 const DIVE_MAX_DURATION = 920;
 const DIVE_RECOVERY_DURATION = 220;
+const DUCK_SURFACE_Y = DUCK_WATERLINE - 80;
 const DUCK_DIVE_Y = WATER_SURFACE_Y + 86;
 const DUCK_HOME_X = 220;
 const DUCK_MIN_X = 72;
@@ -433,6 +434,7 @@ class GameScene extends Phaser.Scene {
     this.isPaused = false;
     this.invulnerableUntil = 0;
     this.isDiving = false;
+    this.isResurfacing = false;
     this.diveUntil = 0;
     this.diveStartedAt = 0;
     this.diveHeld = false;
@@ -499,7 +501,7 @@ class GameScene extends Phaser.Scene {
     this.collectibles = this.physics.add.group({ allowGravity: false });
     this.powerUps = this.physics.add.group({ allowGravity: false });
 
-    this.duck = this.physics.add.sprite(220, DUCK_WATERLINE - 80, "duck");
+    this.duck = this.physics.add.sprite(220, DUCK_SURFACE_Y, "duck");
     this.duck.setScale(0.52);
     this.setDuckNormalBody();
     this.duck.setCollideWorldBounds(true);
@@ -508,7 +510,7 @@ class GameScene extends Phaser.Scene {
 
     this.ground = this.add.rectangle(GAME_WIDTH / 2, DUCK_WATERLINE + 8, GAME_WIDTH, 24, 0x21a8c9, 0);
     this.physics.add.existing(this.ground, true);
-    this.physics.add.collider(this.duck, this.ground);
+    this.surfaceCollider = this.physics.add.collider(this.duck, this.ground);
     this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
     this.physics.add.overlap(this.duck, this.collectibles, this.collectPearl, null, this);
     this.physics.add.overlap(this.duck, this.powerUps, this.collectPowerUp, null, this);
@@ -677,27 +679,27 @@ class GameScene extends Phaser.Scene {
 
   handleGameOverPointer(pointer) {
     const isTopFive = this.stats.scores.some((entry) => entry.id === this.resultEntryId);
-    const buttonY = isTopFive ? 632 : 596;
+    const buttonY = isTopFive ? 618 : 588;
 
-    if (isWithinButton(pointer, 792, 572, "SPEICHERN", 270) && this.nameInput) {
+    if (isWithinButton(pointer, 784, 550, "SPEICHERN", 230) && this.nameInput) {
       this.persistGameResult(this.nameInput.value);
       this.destroyNameInput();
       return;
     }
 
-    if (isWithinButton(pointer, 418, buttonY, "NOCHMAL", 220)) {
+    if (isWithinButton(pointer, 412, buttonY, "NOCHMAL", 190)) {
       this.destroyNameInput();
       this.scene.restart();
       return;
     }
 
-    if (isWithinButton(pointer, 640, buttonY, "BESTENLISTE", 292)) {
+    if (isWithinButton(pointer, 640, buttonY, "BESTENLISTE", 238)) {
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
       return;
     }
 
-    if (isWithinButton(pointer, 866, buttonY, "MENÜ", 190)) {
+    if (isWithinButton(pointer, 852, buttonY, "MENÜ", 166)) {
       this.destroyNameInput();
       this.scene.start("MenuScene");
     }
@@ -772,6 +774,10 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (this.isDiving || this.isResurfacing) {
+      return;
+    }
+
     SoundFX.unlock();
     if (this.duck.body.blocked.down || this.time.now - this.lastGroundedAt < 130) {
       this.performJump();
@@ -793,7 +799,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.isDiving) {
+    if (this.isDiving || this.isResurfacing) {
       return;
     }
 
@@ -808,6 +814,7 @@ class GameScene extends Phaser.Scene {
 
   startDive(held = false) {
     this.isDiving = true;
+    this.isResurfacing = false;
     this.diveHeld = held;
     this.diveQueuedUntil = 0;
     this.diveQueuedHeld = false;
@@ -815,10 +822,14 @@ class GameScene extends Phaser.Scene {
     this.diveUntil = this.time.now + DIVE_MIN_DURATION;
     SoundFX.unlock();
     SoundFX.dive();
+    if (this.surfaceCollider) {
+      this.surfaceCollider.active = false;
+    }
     this.duck.body.allowGravity = false;
     this.duck.body.checkCollision.down = false;
+    this.duck.body.checkCollision.up = false;
     this.duck.setVelocityY(0);
-    this.duck.setY(Phaser.Math.Linear(this.duck.y, DUCK_DIVE_Y, 0.28));
+    this.duck.y = Math.max(this.duck.y, WATER_SURFACE_Y + 28);
     this.duck.setAngle(18);
     this.duck.setAlpha(0.72);
     this.duck.setTint(0x6ff4ff);
@@ -1535,16 +1546,16 @@ class GameScene extends Phaser.Scene {
     const isNewHighscore = finalScore > previousHighscore;
     const isTopFive = nextStats.scores.some((entry) => entry.id === this.resultEntryId);
 
-    const shade = makeScreenShade(this, 0.62, 30);
-    const card = makeGlassPanel(this, 194, 72, 892, 586, 31, 0x086fc0);
-    const gameOverDuck = this.add.image(414, 382, "duckGameOver").setScale(0.38).setDepth(32);
+    const shade = makeScreenShade(this, 0.58, 30);
+    const card = makeGlassPanel(this, 238, 82, 804, 568, 31, 0x086fc0);
+    const gameOverDuck = this.add.image(414, 368, "duckGameOver").setScale(0.32).setDepth(32);
 
     const title = isNewHighscore ? "NEUER ENTENREKORD!" : "ENTE GESTOPPT";
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
-    this.add.text(GAME_WIDTH / 2, 138, title, titleStyle(62, titleColor)).setOrigin(0.5).setDepth(32);
-    makeScoreBox(this, 642, 202, 300, 136, "", "", "#ffffff", 32);
+    this.add.text(GAME_WIDTH / 2, 142, title, titleStyle(52, titleColor)).setOrigin(0.5).setDepth(32);
+    makeScoreBox(this, 650, 208, 268, 122, "", "", "#ffffff", 32);
     const scoreText = this.add
-      .text(792, 254, `${finalScore.toLocaleString("de-DE")}`, titleStyle(72, "#ffffff"))
+      .text(784, 256, `${finalScore.toLocaleString("de-DE")}`, titleStyle(62, "#ffffff"))
       .setOrigin(0.5)
       .setDepth(32)
       .setScale(0.78);
@@ -1554,13 +1565,13 @@ class GameScene extends Phaser.Scene {
       duration: 260,
       ease: "Back.out",
     });
-    this.add.text(792, 310, "PUNKTE", hudTextStyle(22, "#ffffff")).setOrigin(0.5).setDepth(33);
-    makeScoreBox(this, 642, 372, 300, 96, "", "", "#ff70ad", 32);
-    this.add.image(702, 420, "pearlPink").setScale(0.36).setDepth(33);
-    this.add.text(806, 420, this.pearls.toLocaleString("de-DE"), titleStyle(44, "#ffffff")).setOrigin(0.5).setDepth(33);
+    this.add.text(784, 306, "PUNKTE", hudTextStyle(20, "#ffffff")).setOrigin(0.5).setDepth(33);
+    makeScoreBox(this, 650, 364, 268, 86, "", "", "#ff70ad", 32);
+    this.add.image(706, 407, "pearlPink").setScale(0.28).setDepth(33);
+    this.add.text(802, 407, this.pearls.toLocaleString("de-DE"), titleStyle(38, "#ffffff")).setOrigin(0.5).setDepth(33);
     if (!isTopFive) {
       this.add
-        .text(792, 504, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
+        .text(784, 504, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
         .setOrigin(0.5)
         .setDepth(32);
     }
@@ -1568,10 +1579,10 @@ class GameScene extends Phaser.Scene {
     let saveButton = null;
     let nameLabel = null;
     if (isTopFive) {
-      nameLabel = this.add.text(792, 486, "Name fuer die Bestenliste", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
-      this.add.image(792, 526, "uiInputName").setDisplaySize(300, 48).setDepth(32);
-      this.createNameInput(readPlayerName(), 642, 508, 300, 38);
-      saveButton = makeButton(this, 792, 572, "SPEICHERN", 270);
+      nameLabel = this.add.text(784, 462, "Name fuer die Bestenliste", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
+      this.add.image(784, 498, "uiInputName").setDisplaySize(268, 44).setDepth(32);
+      this.createNameInput(readPlayerName(), 650, 481, 268, 34);
+      saveButton = makeButton(this, 784, 550, "SPEICHERN", 230, { icon: false, fontSize: 24 });
       saveButton.setDepth(32);
       saveButton.on("pointerdown", () => {
         const savedStats = this.persistGameResult(this.nameInput?.value || readPlayerName());
@@ -1598,22 +1609,22 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const buttonY = isTopFive ? 632 : 596;
-    const again = makeButton(this, 418, buttonY, "NOCHMAL", 220);
+    const buttonY = isTopFive ? 618 : 588;
+    const again = makeButton(this, 412, buttonY, "NOCHMAL", 190, { icon: false, fontSize: 23 });
     again.setDepth(32);
     again.on("pointerdown", () => {
       this.destroyNameInput();
       this.scene.restart();
     });
 
-    const highscore = makeButton(this, 640, buttonY, "BESTENLISTE", 292);
+    const highscore = makeButton(this, 640, buttonY, "BESTENLISTE", 238, { icon: false, fontSize: 22 });
     highscore.setDepth(32);
     highscore.on("pointerdown", () => {
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
     });
 
-    const menu = makeButton(this, 866, buttonY, "MENÜ", 190);
+    const menu = makeButton(this, 852, buttonY, "MENÜ", 166, { icon: false, fontSize: 23 });
     menu.setDepth(32);
     menu.on("pointerdown", () => {
       this.destroyNameInput();
@@ -1854,8 +1865,10 @@ class GameScene extends Phaser.Scene {
     }
 
     this.duck.body.allowGravity = false;
+    this.duck.body.checkCollision.down = false;
+    this.duck.body.checkCollision.up = false;
     this.duck.setVelocityY(0);
-    this.duck.y = Phaser.Math.Linear(this.duck.y, DUCK_DIVE_Y, 0.18);
+    this.duck.y = Phaser.Math.Linear(this.duck.y, DUCK_DIVE_Y, 0.24);
     this.duck.setAlpha(0.68 + Math.sin(this.time.now / 90) * 0.04);
     this.diveWake?.setPosition(this.duck.x + 28, this.duck.y + 42);
     this.diveShade?.setPosition(this.duck.x + 30, this.duck.y + 52);
@@ -1995,12 +2008,14 @@ class GameScene extends Phaser.Scene {
     }
 
     this.isDiving = false;
+    this.isResurfacing = true;
     this.diveHeld = false;
     this.diveRecoverUntil = this.time.now + DIVE_RECOVERY_DURATION;
     this.setDuckNormalBody();
-    this.duck.body.allowGravity = true;
-    this.duck.body.checkCollision.down = true;
-    this.duck.setVelocityY(-460);
+    this.duck.body.allowGravity = false;
+    this.duck.body.checkCollision.down = false;
+    this.duck.body.checkCollision.up = false;
+    this.duck.setVelocityY(0);
     this.duck.setAngle(-10);
     this.duck.setAlpha(1);
     if (this.time.now >= this.invulnerableUntil && !this.isTurboActive()) {
@@ -2015,9 +2030,21 @@ class GameScene extends Phaser.Scene {
     this.splash(this.duck.x - 28, this.duck.y + 48);
     this.tweens.add({
       targets: this.duck,
+      y: DUCK_SURFACE_Y,
       angle: -4,
-      duration: 180,
+      duration: 240,
       ease: "Cubic.out",
+      onComplete: () => {
+        this.isResurfacing = false;
+        this.setDuckNormalBody();
+        this.duck.body.allowGravity = true;
+        this.duck.body.checkCollision.down = true;
+        this.duck.body.checkCollision.up = true;
+        if (this.surfaceCollider) {
+          this.surfaceCollider.active = true;
+        }
+        this.duck.setVelocityY(0);
+      },
     });
     this.time.delayedCall(210, () => {
       if (!this.isGameOver && !this.isDiving && this.shieldCharges === 0 && !this.isTurboActive() && this.time.now >= this.invulnerableUntil) {
@@ -2852,9 +2879,9 @@ function makeRoundIconButton(scene, x, y, iconKey, iconScale = 0.08, fill = 0x2f
   return container;
 }
 
-function makeButton(scene, x, y, label, minWidthOverride = null) {
+function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   const container = scene.add.container(x, y);
-  const iconKey = getButtonIcon(label);
+  const iconKey = options.icon === false ? null : getButtonIcon(label);
   const heroButton = label === "SPIELEN" || label === "BESTENLISTE";
   const minWidth = label === "BESTENLISTE" ? 312 : label === "SPIELEN" ? 292 : 190;
   const width = minWidthOverride ?? Math.max(minWidth, label.length * 17 + (iconKey ? 78 : 38));
@@ -2874,7 +2901,7 @@ function makeButton(scene, x, y, label, minWidthOverride = null) {
   const icon = iconKey ? scene.add.image(-halfWidth + (largeButton ? 58 : 48), 0, iconKey).setScale(largeButton ? 0.082 : 0.068) : null;
   const text = scene.add.text(iconKey ? (largeButton ? 30 : 24) : 0, 1, label, {
     fontFamily: "Trebuchet MS",
-    fontSize: largeButton ? (label.length > 10 ? "30px" : "34px") : label.length > 10 ? "23px" : "26px",
+    fontSize: options.fontSize ? `${options.fontSize}px` : largeButton ? (label.length > 10 ? "30px" : "34px") : label.length > 10 ? "23px" : "26px",
     fontStyle: "900",
     color: "#ffffff",
     stroke: colors.textStroke,
