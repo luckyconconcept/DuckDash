@@ -988,16 +988,6 @@ class GameScene extends Phaser.Scene {
         labelOffset: 118,
       },
       {
-        key: "toothbrush",
-        y: WATERLINE - 78,
-        scale: 0.5,
-        speedBoost: 18,
-        body: [230, 98, 58, 56],
-        gap: 540,
-        mode: "dive",
-        prompt: "TAUCH!",
-      },
-      {
         key: "cupBrushV2",
         y: WATERLINE - 78,
         scale: 0.42,
@@ -1007,6 +997,17 @@ class GameScene extends Phaser.Scene {
         mode: "dive",
         prompt: "TAUCH!",
         labelOffset: 124,
+      },
+      {
+        key: "toothbrush",
+        y: WATERLINE - 72,
+        scale: 0.46,
+        speedBoost: 10,
+        body: [158, 66, 96, 44],
+        gap: 610,
+        mode: "dive",
+        prompt: "TAUCH!",
+        labelOffset: 106,
       },
       {
         key: "pearlBlue",
@@ -2395,6 +2396,10 @@ class GameScene extends Phaser.Scene {
       }
 
       if (mode === "dive") {
+        if (obstacle.x > this.duck.x + 26) {
+          return;
+        }
+
         if (this.isDiving) {
           this.passUnderObstacle(obstacle);
           return;
