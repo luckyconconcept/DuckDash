@@ -27,16 +27,16 @@ const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
 const MENU_START_HIT = {
-  x: GAME_WIDTH / 2 - 390,
-  y: 590,
-  width: 360,
-  height: 104,
+  x: 228,
+  y: 604,
+  width: 320,
+  height: 86,
 };
 const MENU_HIGHSCORE_HIT = {
-  x: GAME_WIDTH / 2 + 42,
-  y: 590,
-  width: 396,
-  height: 104,
+  x: 738,
+  y: 604,
+  width: 360,
+  height: 86,
 };
 
 const QUIPS = [
@@ -189,14 +189,15 @@ class MenuScene extends Phaser.Scene {
   create() {
     this.hasStarted = false;
     this.stats = readStats();
+    this.nativeFallbackReadyAt = performance.now() + 220;
     addBackground(this);
     addWaterOverlay(this);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04324f, 0.08).setDepth(1.1);
-    const logo = this.add.image(GAME_WIDTH / 2, 116, "logo").setScale(0.92).setDepth(3);
+    this.add.image(GAME_WIDTH / 2, 116, "logo").setScale(0.92).setDepth(3);
 
     this.add
-      .text(GAME_WIDTH / 2, 252, "Spring. Tauch. Sammle Perlen.", {
+      .text(GAME_WIDTH / 2, 258, "Spring. Tauch. Sammle Perlen.", {
         fontFamily: "Trebuchet MS",
         fontSize: "26px",
         fontStyle: "700",
@@ -207,14 +208,11 @@ class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(3);
 
-    this.duck = this.add.image(GAME_WIDTH / 2, 378, "duckHero").setScale(0.38).setDepth(4);
-    this.add.image(GAME_WIDTH / 2 - 392, 388, "pearlPink").setScale(0.92).setDepth(3);
-    this.add.image(GAME_WIDTH / 2 + 392, 344, "pearlBlue").setScale(0.82).setDepth(3);
-    this.add.image(GAME_WIDTH / 2 + 266, 510, "pearlBlue").setScale(0.38).setAlpha(0.82).setDepth(3);
+    this.duck = this.add.image(GAME_WIDTH / 2, 376, "duckHero").setScale(0.38).setDepth(4);
 
-    this.add.text(GAME_WIDTH / 2, 494, "BEST SCORE", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(4);
+    this.add.text(GAME_WIDTH / 2, 516, "BEST SCORE", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(4);
     this.highscoreText = this.add
-      .text(GAME_WIDTH / 2, 552, this.stats.highscore.toLocaleString("de-DE"), {
+      .text(GAME_WIDTH / 2, 570, this.stats.highscore.toLocaleString("de-DE"), {
         fontFamily: "Trebuchet MS",
         fontSize: "84px",
         fontStyle: "900",
@@ -226,7 +224,7 @@ class MenuScene extends Phaser.Scene {
       .setDepth(5);
 
     this.tweens.add({
-      targets: [this.duck, logo],
+      targets: this.duck,
       y: "+=10",
       angle: -3,
       yoyo: true,
@@ -240,19 +238,11 @@ class MenuScene extends Phaser.Scene {
       callback: () => this.menuSplash(this.duck.x - 54, this.duck.y + 42),
     });
 
-    const startButton = makeButton(this, GAME_WIDTH / 2 - 238, 620, "SPIELEN");
+    const startButton = makeButton(this, 388, 646, "SPIELEN");
     startButton.setDepth(5);
     startButton.on("pointerdown", () => this.startGame());
-    this.tweens.add({
-      targets: startButton,
-      scale: 1.04,
-      yoyo: true,
-      repeat: -1,
-      duration: 760,
-      ease: "Sine.inOut",
-    });
 
-    const highscoreButton = makeButton(this, GAME_WIDTH / 2 + 238, 620, "BESTENLISTE");
+    const highscoreButton = makeButton(this, 918, 646, "BESTENLISTE");
     highscoreButton.setDepth(5);
     highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
 
@@ -276,6 +266,10 @@ class MenuScene extends Phaser.Scene {
 
   installNativeStartFallback() {
     const startFromDom = (event) => {
+      if (performance.now() < this.nativeFallbackReadyAt) {
+        return;
+      }
+
       if (this.isStartPointer(event)) {
         this.startGame();
         return;
