@@ -135,6 +135,10 @@ const SoundFX = {
       return;
     }
 
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+
     const oscillator = this.ctx.createOscillator();
     const amp = this.ctx.createGain();
     oscillator.type = type;
@@ -187,7 +191,6 @@ class BootScene extends Phaser.Scene {
     this.load.image("soap", "assets/soap.png?v=20260622-assets-ui1");
     this.load.image("soapV2", "assets/soap_v2.png?v=20260622-assets-ui1");
     this.load.image("toothbrush", "assets/toothbrush.png");
-    this.load.image("whirlpool", "assets/whirlpool.png");
     this.load.image("whirlpoolV2", "assets/whirlpool_v2.png?v=20260622-assets-ui1");
     this.load.image("pearlPink", "assets/pearl_pink.png?v=20260622-assets-ui1");
     this.load.image("pearlBlue", "assets/pearl_blue.png?v=20260622-assets-ui1");
@@ -195,16 +198,10 @@ class BootScene extends Phaser.Scene {
     this.load.image("shellPearl", "assets/shell_pearl.png?v=20260622-assets-ui1");
     this.load.image("starfishBonus", "assets/starfish_bonus.png?v=20260622-assets-ui1");
     this.load.image("underwaterPearls", "assets/underwater_pearls.png?v=20260622-assets-ui1");
-    this.load.image("quackBomb", "assets/quack_bomb.png");
     this.load.image("quackBombV2", "assets/quack_bomb_v2.png?v=20260622-assets-ui1");
-    this.load.image("cupBrush", "assets/cup_brush.png");
     this.load.image("cupBrushV2", "assets/cup_brush_v2.png?v=20260622-assets-ui1");
     this.load.image("underwaterCap", "assets/underwater_cap.png?v=20260622-assets-ui1");
     this.load.image("drainPlug", "assets/drain_plug.png?v=20260622-assets-ui1");
-    this.load.image("waterCurrent", "assets/water_current.png?v=20260621-underwater1");
-    this.load.image("powerupMagnet", "assets/powerup_magnet.png");
-    this.load.image("powerupShield", "assets/powerup_shield.png");
-    this.load.image("powerupTurbo", "assets/powerup_turbo.png");
     this.load.image("powerupMagnetV2", "assets/powerup_magnet_v2.png?v=20260622-assets-ui1");
     this.load.image("powerupShieldV2", "assets/powerup_shield_v2.png?v=20260622-assets-ui1");
     this.load.image("powerupTurboV2", "assets/powerup_turbo_v2.png?v=20260622-assets-ui1");
@@ -242,10 +239,6 @@ class BootScene extends Phaser.Scene {
     this.load.image("fxDiveLaneTrail", "assets/fx_dive_lane_trail.png?v=20260622-newnew1");
     this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
     this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
-    this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260622-newnew1");
-    this.load.image("uiSignalDive", "assets/ui_signal_dive.png?v=20260622-newnew1");
-    this.load.image("uiSignalStomp", "assets/ui_signal_stomp.png?v=20260622-newnew1");
-    this.load.image("uiSignalStayUp", "assets/ui_signal_stay_up.png?v=20260622-newnew1");
   }
 
   create() {
@@ -1217,14 +1210,8 @@ class GameScene extends Phaser.Scene {
 
     const ring = this.add.circle(0, 0, 34, cueConfig.fill, 0.42);
     ring.setStrokeStyle(4, 0xffffff, 0.7);
-    if (this.textures.exists(cueConfig.icon)) {
-      const icon = this.add.image(0, 0, cueConfig.icon).setScale(0.056).setAlpha(0.96);
-      const text = this.add.text(0, 45, cueConfig.text, hudTextStyle(11, cueConfig.color)).setOrigin(0.5);
-      cue.add([ring, icon, text]);
-    } else {
-      const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
-      cue.add([ring, text]);
-    }
+    const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
+    cue.add([ring, text]);
 
     obstacle.setData("cue", cue);
     obstacle.setData("cueRing", ring);
@@ -2782,33 +2769,6 @@ function addWaterOverlay(scene) {
   addWaterGlints(scene, baseDepth + 0.2);
 }
 
-function addCurrentSprites(scene, depth) {
-  const currents = [
-    { x: 180, y: WATER_SURFACE_Y + 154, scale: 0.3, alpha: 0.18, duration: 10800 },
-    { x: 760, y: WATER_SURFACE_Y + 210, scale: 0.24, alpha: 0.14, duration: 12800 },
-    { x: 1180, y: WATER_SURFACE_Y + 114, scale: 0.21, alpha: 0.12, duration: 9200 },
-  ];
-
-  currents.forEach((config) => {
-    const current = scene.add.image(config.x, config.y, "waterCurrent");
-    current.setScale(config.scale);
-    current.setAlpha(config.alpha);
-    current.setDepth(depth);
-    current.setBlendMode(Phaser.BlendModes.SCREEN);
-
-    scene.tweens.add({
-      targets: current,
-      x: current.x - 520,
-      y: current.y + 18,
-      alpha: config.alpha * 0.45,
-      duration: config.duration,
-      repeat: -1,
-      yoyo: true,
-      ease: "Sine.inOut",
-    });
-  });
-}
-
 function addAnimatedWaterSurface(scene, depth) {
   const bands = [
     { y: WATER_SURFACE_Y + 2, color: 0xeaffff, alpha: 0.34, width: 17, amp: 10, wave: 72, speed: 1700, drift: -430, bob: 11 },
@@ -2882,49 +2842,6 @@ function addSurfaceFoamFlecks(scene, depth) {
   }
 }
 
-function addWaterCausticRibbons(scene, depth) {
-  const ribbons = [
-    { y: WATER_SURFACE_Y + 72, alpha: 0.18, amp: 7, wave: 74, width: 3, duration: 4200, drift: -300 },
-    { y: WATER_SURFACE_Y + 126, alpha: 0.2, amp: 10, wave: 92, width: 4, duration: 5600, drift: -420 },
-    { y: WATER_SURFACE_Y + 188, alpha: 0.16, amp: 12, wave: 118, width: 3, duration: 6800, drift: -360 },
-  ];
-
-  ribbons.forEach((config, index) => {
-    const graphic = scene.add.graphics();
-    const width = GAME_WIDTH + 620;
-    graphic.x = -180 + index * 46;
-    graphic.setDepth(depth);
-    graphic.setAlpha(0.78);
-    graphic.setBlendMode(Phaser.BlendModes.SCREEN);
-    graphic.lineStyle(config.width, 0xeaffff, config.alpha);
-
-    for (let lane = 0; lane < 3; lane += 1) {
-      graphic.beginPath();
-      const laneY = config.y + lane * 18;
-      graphic.moveTo(0, laneY);
-      for (let x = 0; x <= width; x += 18) {
-        const y =
-          laneY +
-          Math.sin((x + lane * 38) / config.wave) * config.amp +
-          Math.sin((x + index * 83) / 37) * 2.5;
-        graphic.lineTo(x, y);
-      }
-      graphic.strokePath();
-    }
-
-    scene.tweens.add({
-      targets: graphic,
-      x: graphic.x + config.drift,
-      alpha: 0.34,
-      duration: config.duration,
-      delay: index * 420,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.inOut",
-    });
-  });
-}
-
 function addSurfaceShimmer(scene, depth) {
   for (let index = 0; index < 7; index += 1) {
     const shimmer = scene.add.ellipse(
@@ -2951,26 +2868,6 @@ function addSurfaceShimmer(scene, depth) {
       ease: "Sine.inOut",
     });
   }
-}
-
-function drawWaterCurrent(scene, y, color, alpha, amplitude, wavelength, lanes) {
-  const graphic = scene.add.graphics();
-  const width = GAME_WIDTH + 560;
-  graphic.x = -140;
-  graphic.lineStyle(2, color, alpha);
-
-  for (let lane = 0; lane < lanes; lane += 1) {
-    const laneY = y + lane * 24;
-    graphic.beginPath();
-    graphic.moveTo(0, laneY);
-    for (let x = 0; x <= width; x += 18) {
-      const offset = Math.sin(x / wavelength + lane * 1.35) * amplitude;
-      graphic.lineTo(x, laneY + offset);
-    }
-    graphic.strokePath();
-  }
-
-  return graphic;
 }
 
 function addBathtubRunoff(scene, depth) {
@@ -3368,22 +3265,6 @@ function getCollectibleMessage(key) {
 
 function isPearlAnimationTarget(target) {
   return ["pearlPink", "pearlBlue", "pearlGold", "shellPearl", "starfishBonus", "underwaterPearls"].includes(target?.texture?.key);
-}
-
-function makeRoundButton(scene, x, y, label) {
-  const container = scene.add.container(x, y);
-  const bg = scene.add.graphics();
-  bg.fillStyle(0x2f8ed8, 0.94);
-  bg.fillRoundedRect(-34, -34, 68, 68, 17);
-  bg.lineStyle(3, 0xffffff, 0.58);
-  bg.strokeRoundedRect(-34, -34, 68, 68, 17);
-  const text = scene.add.text(0, 0, label, hudTextStyle(28, "#ffffff")).setOrigin(0.5);
-  container.add([bg, text]);
-  container.setSize(68, 68);
-  container.setInteractive(new Phaser.Geom.Rectangle(-34, -34, 68, 68), Phaser.Geom.Rectangle.Contains);
-  container.input.cursor = "pointer";
-  container.setDepth(20);
-  return container;
 }
 
 function hudTextStyle(size, color) {

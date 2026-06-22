@@ -20,7 +20,10 @@
         <span>Duck & Dash spielt sich quer am besten.</span>
       </aside>
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"
+      onerror="document.getElementById('game').innerHTML='&lt;p style=&quot;color:#fff;text-align:center;padding:2rem;font-family:sans-serif&quot;&gt;Spiel konnte nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.&lt;/p&gt;'"
+    ></script>
     <script src="game.js?v=20260622-gameover-align1"></script>
   </body>
 </html>
