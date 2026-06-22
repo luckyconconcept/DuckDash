@@ -27,14 +27,14 @@ const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
 const MENU_START_HIT = {
-  x: 228,
-  y: 604,
+  x: 184,
+  y: 627,
   width: 320,
   height: 86,
 };
 const MENU_HIGHSCORE_HIT = {
-  x: 738,
-  y: 604,
+  x: 792,
+  y: 627,
   width: 360,
   height: 86,
 };
@@ -194,10 +194,10 @@ class MenuScene extends Phaser.Scene {
     addWaterOverlay(this);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04324f, 0.08).setDepth(1.1);
-    this.add.image(GAME_WIDTH / 2, 116, "logo").setScale(0.92).setDepth(3);
+    this.add.image(GAME_WIDTH / 2, 150, "logo").setScale(0.92).setDepth(3);
 
     this.add
-      .text(GAME_WIDTH / 2, 258, "Spring. Tauch. Sammle Perlen.", {
+      .text(GAME_WIDTH / 2, 292, "Spring. Tauch. Sammle Perlen.", {
         fontFamily: "Trebuchet MS",
         fontSize: "26px",
         fontStyle: "700",
@@ -208,17 +208,17 @@ class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(3);
 
-    this.duck = this.add.image(GAME_WIDTH / 2, 376, "duckHero").setScale(0.38).setDepth(4);
+    this.duck = this.add.image(GAME_WIDTH / 2, 416, "duckHero").setScale(0.38).setDepth(4);
 
-    this.add.text(GAME_WIDTH / 2, 516, "BEST SCORE", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(4);
+    this.add.text(GAME_WIDTH / 2, 538, "BEST SCORE", hudTextStyle(26, "#ffffff")).setOrigin(0.5).setDepth(4);
     this.highscoreText = this.add
-      .text(GAME_WIDTH / 2, 570, this.stats.highscore.toLocaleString("de-DE"), {
+      .text(GAME_WIDTH / 2, 594, this.stats.highscore.toLocaleString("de-DE"), {
         fontFamily: "Trebuchet MS",
-        fontSize: "84px",
+        fontSize: "72px",
         fontStyle: "900",
         color: "#ffd43f",
         stroke: "#123044",
-        strokeThickness: 9,
+        strokeThickness: 8,
       })
       .setOrigin(0.5)
       .setDepth(5);
@@ -238,11 +238,11 @@ class MenuScene extends Phaser.Scene {
       callback: () => this.menuSplash(this.duck.x - 54, this.duck.y + 42),
     });
 
-    const startButton = makeButton(this, 388, 646, "SPIELEN");
+    const startButton = makeButton(this, 330, 666, "SPIELEN");
     startButton.setDepth(5);
     startButton.on("pointerdown", () => this.startGame());
 
-    const highscoreButton = makeButton(this, 918, 646, "BESTENLISTE");
+    const highscoreButton = makeButton(this, 970, 666, "BESTENLISTE");
     highscoreButton.setDepth(5);
     highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
 
