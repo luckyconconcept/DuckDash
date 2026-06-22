@@ -53,14 +53,14 @@ const OBSTACLE_SEQUENCES = {
     ],
     [
       { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
       { mode: "underwater", sequence: "stay_up_surface_line" },
       { mode: "jump", sequence: "jump_collect_arc" },
-      { mode: "stomp", sequence: "stomp_bounce_reward" },
     ],
     [
       { mode: "stomp", sequence: "stomp_bounce_reward" },
-      { mode: "jump", sequence: "jump_collect_arc" },
       { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "jump", sequence: "jump_collect_arc" },
       { mode: "underwater", sequence: "stay_up_surface_line" },
     ],
     [
@@ -204,6 +204,26 @@ function testDifficultyIntroductions() {
   assert(laterModes.has("underwater"), "Later phase must include underwater stay-up hazards");
 }
 
+function testStayUpNeverFollowsDive() {
+  // Stay-up uses inverted logic (do nothing = survive). Diving into a stay-up
+  // hazard is fatal, so a dive obstacle must never sit right before a stay-up.
+  for (const [poolName, pool] of Object.entries(OBSTACLE_SEQUENCES)) {
+    for (const sequence of pool) {
+      // No sequence may start with underwater (would chain after a prior dive).
+      assert(
+        sequence[0].mode !== "underwater",
+        `${poolName} sequence must not start with underwater (cross-sequence dive->stay-up)`,
+      );
+      for (let i = 1; i < sequence.length; i += 1) {
+        assert(
+          !(sequence[i].mode === "underwater" && sequence[i - 1].mode === "dive"),
+          `${poolName} sequence has dive immediately before stay-up (unfair combo)`,
+        );
+      }
+    }
+  }
+}
+
 function testDiveFairness() {
   const firstDive = allowedOptionsForTime(0).find((option) => option.mode === "dive");
   const toothbrush = obstacleOptions.find((option) => option.key === "toothbrush");
@@ -286,6 +306,7 @@ function main() {
     testTelemetryHooksExist,
     testSequencePoolsMatchAvailableObstacles,
     testDifficultyIntroductions,
+    testStayUpNeverFollowsDive,
     testDiveFairness,
     testStompFairness,
     testRewardTrailsExplainActions,

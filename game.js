@@ -73,14 +73,14 @@ const OBSTACLE_SEQUENCES = {
     ],
     [
       { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "stomp", sequence: "stomp_bounce_reward" },
       { mode: "underwater", sequence: "stay_up_surface_line" },
       { mode: "jump", sequence: "jump_collect_arc" },
-      { mode: "stomp", sequence: "stomp_bounce_reward" },
     ],
     [
       { mode: "stomp", sequence: "stomp_bounce_reward" },
-      { mode: "jump", sequence: "jump_collect_arc" },
       { mode: "dive", sequence: "dive_pearl_tunnel" },
+      { mode: "jump", sequence: "jump_collect_arc" },
       { mode: "underwater", sequence: "stay_up_surface_line" },
     ],
     [
@@ -631,6 +631,40 @@ class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setAlpha(0);
+
+    this.showOnboardingHint();
+  }
+
+  showOnboardingHint() {
+    // Lightweight onboarding: name the core controls for the first few seconds
+    // so a new player learns jump/dive/stomp before they turn lethal.
+    const hint = this.add
+      .text(
+        GAME_WIDTH / 2,
+        214,
+        "↑ / Tippen = Springen      ↓ = Tauchen\nAuf einen Gegner fallen = Drauf!",
+        {
+          fontFamily: "Trebuchet MS",
+          fontSize: "23px",
+          fontStyle: "700",
+          color: "#eaffff",
+          stroke: "#0a2840",
+          strokeThickness: 5,
+          align: "center",
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(21)
+      .setAlpha(0);
+
+    this.tweens.add({ targets: hint, alpha: 1, duration: 280 });
+    this.tweens.add({
+      targets: hint,
+      alpha: 0,
+      delay: 5200,
+      duration: 700,
+      onComplete: () => hint.destroy(),
+    });
   }
 
   createControls() {
@@ -1469,7 +1503,8 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    const value = pearl.getData("value");
+    const baseValue = pearl.getData("value");
+    const value = Math.round(baseValue * this.getComboMultiplier());
     const sequence = pearl.getData("sequence");
     if (sequence) {
       incrementCounter(this.telemetry.reward.collectedBySequence, sequence);
@@ -1484,15 +1519,15 @@ class GameScene extends Phaser.Scene {
     if (driftBonus > 0) {
       this.score += driftBonus;
     }
-    const isRareCollectible = value >= 80;
+    const isRareCollectible = baseValue >= 80;
     this.addCombo(
-      (value >= 50 ? 2 : 1) + (isRareCollectible ? 1 : 0) + (driftBonus > 0 ? 1 : 0),
+      (baseValue >= 50 ? 2 : 1) + (isRareCollectible ? 1 : 0) + (driftBonus > 0 ? 1 : 0),
       driftBonus > 0 ? `SAUBERE LINIE! +${driftBonus}` : getCollectibleMessage(pearl.texture.key),
       pearl.x,
       pearl.y - 50,
       driftBonus > 0 ? "#9df6ff" : isRareCollectible ? "#ff70ad" : "#ffd43f",
     );
-    this.burst(pearl.x, pearl.y, [pearl.texture.key], value >= 50 ? 16 : 9, value >= 80 ? 0.16 : value >= 50 ? 0.18 : 0.12, value >= 80 ? 112 : value >= 50 ? 86 : 62);
+    this.burst(pearl.x, pearl.y, [pearl.texture.key], baseValue >= 50 ? 16 : 9, baseValue >= 80 ? 0.16 : baseValue >= 50 ? 0.18 : 0.12, baseValue >= 80 ? 112 : baseValue >= 50 ? 86 : 62);
     this.splash(pearl.x, pearl.y);
     pearl.setActive(false);
     pearl.body.enable = false;
@@ -1654,6 +1689,13 @@ class GameScene extends Phaser.Scene {
 
   handleHit(_, obstacle) {
     if (this.isGameOver) {
+      return;
+    }
+
+    // resolveObstacleChallengeWindows() runs in update() before the physics
+    // overlap fires and is the authority on each obstacle's outcome. Once it
+    // has resolved an obstacle, the overlap must not re-process it.
+    if (obstacle.getData("passed")) {
       return;
     }
 
@@ -2556,7 +2598,11 @@ class GameScene extends Phaser.Scene {
       if (cue?.active) {
         const labelOffset = obstacle.getData("labelOffset") ?? 100;
         cue.setPosition(obstacle.x - 250, obstacle.y - labelOffset);
-        cue.setAlpha(Phaser.Math.Clamp((obstacle.x - 460) / 260, 0, 0.95));
+        // Fade the cue by time-to-duck, not by a fixed x. This guarantees the
+        // warning stays readable for >=0.6s before impact at any speed: full
+        // alpha from ~0.8s out, fading to 0 at ~0.3s out (cue clears the impact).
+        const timeToDuck = (obstacle.x - this.duck.x) / Math.max(1, this.speed);
+        cue.setAlpha(Phaser.Math.Clamp((timeToDuck - 0.3) / 0.5, 0, 0.95));
       }
       const label = obstacle.getData("label");
       if (!label?.active) {
@@ -2601,12 +2647,21 @@ class GameScene extends Phaser.Scene {
     this.burst(this.duck.x + 38, this.duck.y + 26, isPerfect ? ["pearlGold", "pearlBlue"] : ["pearlBlue"], isPerfect ? 18 : 10, 0.1, isPerfect ? 120 : 78);
   }
 
+  getComboMultiplier() {
+    // Every 4 combo steps adds +0.25x to collected pearl value (max x2.5 at the
+    // combo cap of 24). Turns "keep the combo alive" into an active, greedy
+    // reason to chase pearls instead of just dodging.
+    return 1 + Math.min(1.5, Math.floor(this.combo / 4) * 0.25);
+  }
+
   addCombo(amount, message, x, y, color) {
     this.combo = Math.min(24, this.combo + amount);
     this.lastComboAt = this.time.now;
     const bonus = Math.min(18, Math.max(0, this.combo - 3));
     this.score += bonus;
-    this.comboText.setText(this.combo >= 4 ? `Combo x${this.combo}` : "");
+    const mult = this.getComboMultiplier();
+    const multLabel = mult > 1 ? `  Perlen x${mult % 1 === 0 ? mult : mult.toFixed(2)}` : "";
+    this.comboText.setText(this.combo >= 4 ? `Combo x${this.combo}${multLabel}` : "");
 
     const comboMessage = bonus > 0 ? `${message} +${bonus}` : message;
     this.showFloatingText(comboMessage, x, y, color);
