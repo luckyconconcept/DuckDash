@@ -176,6 +176,22 @@ function testHarnessMatchesGameSource() {
   assertGameSourceIncludes("sequence: \"stay_up_surface_line\"", "Stay-up sequence missing from game source");
 }
 
+function testTelemetryHooksExist() {
+  assertGameSourceIncludes("const TELEMETRY_KEY = \"duck-dash-last-run-telemetry\";", "Telemetry storage key missing");
+  assertGameSourceIncludes("this.telemetry = createRunTelemetry();", "Run telemetry is not initialized");
+  assertGameSourceIncludes("incrementCounter(this.telemetry.challenge.spawnedByMode, pick.mode);", "Challenge spawn telemetry missing");
+  assertGameSourceIncludes("this.recordChallengeOutcome(obstacle, \"hit\");", "Challenge hit telemetry missing");
+  assertGameSourceIncludes("this.recordChallengeOutcome(obstacle, \"cleared\");", "Challenge clear telemetry missing");
+  assertGameSourceIncludes("this.recordChallengeOutcome(obstacle, \"absorbed\");", "Shield absorb telemetry missing");
+  assertGameSourceIncludes("this.recordChallengeOutcome(obstacle, \"turboCleared\");", "Turbo clear telemetry missing");
+  assertGameSourceIncludes("this.recordChallengeOutcome(obstacle, \"bombCleared\");", "Bomb clear telemetry missing");
+  assertGameSourceIncludes("incrementCounter(this.telemetry.reward.spawnedBySequence, sequence, points.length);", "Reward trail spawn telemetry missing");
+  assertGameSourceIncludes("incrementCounter(this.telemetry.reward.collectedBySequence, sequence);", "Reward collect telemetry missing");
+  assertGameSourceIncludes("incrementCounter(this.telemetry.powerup.spawnedByType, config.type);", "Powerup spawn telemetry missing");
+  assertGameSourceIncludes("incrementCounter(this.telemetry.powerup.collectedByType, type);", "Powerup collect telemetry missing");
+  assertGameSourceIncludes("publishRunTelemetry(this.telemetry);", "Run telemetry publish missing");
+}
+
 function testDifficultyIntroductions() {
   const earlyModes = new Set(OBSTACLE_SEQUENCES.early.flat().map((entry) => entry.mode));
   const midModes = new Set(OBSTACLE_SEQUENCES.mid.flat().map((entry) => entry.mode));
@@ -267,6 +283,7 @@ function testSimulatedRun() {
 function main() {
   const tests = [
     testHarnessMatchesGameSource,
+    testTelemetryHooksExist,
     testSequencePoolsMatchAvailableObstacles,
     testDifficultyIntroductions,
     testDiveFairness,

@@ -6,6 +6,7 @@ const DUCK_WATERLINE = 476;
 const WATER_TUNING_MODE = false;
 const STORAGE_KEY = "duck-dash-stats";
 const PLAYER_NAME_KEY = "duck-dash-player-name";
+const TELEMETRY_KEY = "duck-dash-last-run-telemetry";
 const DEFAULT_PLAYER_NAME = "BadeEnte";
 const FALLBACK_NAMES = ["QuakMeister", "SplashKing", "DuckHero", "BadeEnte", "WaterNinja"];
 const COLLECTIBLE_LANES = [
@@ -236,6 +237,9 @@ class BootScene extends Phaser.Scene {
     this.load.image("fxSplashBig", "assets/fx_splash_big.png?v=20260622-assets-ui1");
     this.load.image("fxBubblePop", "assets/fx_bubble_pop.png?v=20260622-assets-ui1");
     this.load.image("fxQuackWave", "assets/fx_quack_wave.png?v=20260622-assets-ui1");
+    this.load.image("fxQuackWavePrompt", "assets/fx_quack_wave_prompt.png?v=20260622-newnew1");
+    this.load.image("fxMagnetPullTrail", "assets/fx_magnet_pull_trail.png?v=20260622-newnew1");
+    this.load.image("fxDiveLaneTrail", "assets/fx_dive_lane_trail.png?v=20260622-newnew1");
     this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
     this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
     this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260622-newnew1");
@@ -528,6 +532,7 @@ class GameScene extends Phaser.Scene {
     this.nextPowerUpAt = 0;
     this.resultSaved = false;
     this.resultEntryId = "";
+    this.telemetry = createRunTelemetry();
     this.nameInput = null;
     this.nameInputLayoutHandler = null;
     this.hudCache = {
@@ -1084,6 +1089,7 @@ class GameScene extends Phaser.Scene {
     obstacle.setData("sequence", pick.sequence);
     obstacle.setData("prompt", pick.prompt);
     obstacle.setData("labelOffset", pick.labelOffset ?? (pick.mode === "dive" ? 74 : 88));
+    incrementCounter(this.telemetry.challenge.spawnedByMode, pick.mode);
 
     if (pick.key === "cupBrush" || pick.key === "cupBrushV2") {
       this.decorateCupBrush(obstacle);
@@ -1184,6 +1190,20 @@ class GameScene extends Phaser.Scene {
     obstacle.getData("label")?.destroy();
   }
 
+  recordChallengeOutcome(obstacle, outcome) {
+    if (!obstacle?.active || obstacle.getData("telemetryOutcome")) {
+      return;
+    }
+
+    const mode = obstacle.getData("mode") || "unknown";
+    const bucketName = `${outcome}ByMode`;
+    if (!this.telemetry.challenge[bucketName]) {
+      this.telemetry.challenge[bucketName] = {};
+    }
+    obstacle.setData("telemetryOutcome", outcome);
+    incrementCounter(this.telemetry.challenge[bucketName], mode);
+  }
+
   decorateModeCue(obstacle, config) {
     const cueConfig = MODE_CUE_CONFIG[config.mode];
     if (!cueConfig) {
@@ -1221,7 +1241,9 @@ class GameScene extends Phaser.Scene {
 
   spawnRewardTrailForObstacle(obstacle, config) {
     const trailId = (this.rewardTrailId += 1);
-    const points = this.getRewardTrailPoints(config.sequence ?? config.mode);
+    const sequence = config.sequence ?? config.mode;
+    const points = this.getRewardTrailPoints(sequence);
+    incrementCounter(this.telemetry.reward.spawnedBySequence, sequence, points.length);
 
     points.forEach((point, index) => {
       this.time.delayedCall(index * 55, () => {
@@ -1229,7 +1251,10 @@ class GameScene extends Phaser.Scene {
           return;
         }
 
-        this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId, { underwater: point.underwater });
+        this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId, {
+          sequence,
+          underwater: point.underwater,
+        });
       });
     });
   }
@@ -1312,6 +1337,7 @@ class GameScene extends Phaser.Scene {
     pearl.setData("value", value);
     pearl.setData("cleanup", true);
     pearl.setData("trailId", trailId);
+    pearl.setData("sequence", options.sequence ?? null);
     pearl.setData("underwater", Boolean(options.underwater));
 
     this.tweens.add({
@@ -1377,6 +1403,7 @@ class GameScene extends Phaser.Scene {
       { type: "turbo", key: "powerupTurboV2", label: "TURBO", icon: "", color: "#ff70ad", ring: 0xff70ad, scale: 0.46, tint: null },
     ];
     const config = Phaser.Utils.Array.GetRandom(this.runTime < 32 ? options.slice(0, 3) : options);
+    incrementCounter(this.telemetry.powerup.spawnedByType, config.type);
     const powerUp = this.powerUps.create(GAME_WIDTH + 120, Phaser.Math.Between(285, 420), config.key);
     powerUp.setScale(config.scale);
     powerUp.body.setCircle(48);
@@ -1456,6 +1483,13 @@ class GameScene extends Phaser.Scene {
     }
 
     const value = pearl.getData("value");
+    const sequence = pearl.getData("sequence");
+    if (sequence) {
+      incrementCounter(this.telemetry.reward.collectedBySequence, sequence);
+    }
+    if (this.isMagnetActive()) {
+      incrementCounter(this.telemetry.powerup.usedEffect, "magnetPearlCollect");
+    }
     this.score += value;
     this.pearls += 1;
     SoundFX.collect();
@@ -1487,6 +1521,7 @@ class GameScene extends Phaser.Scene {
 
   collectPowerUp(_, powerUp) {
     const type = powerUp.getData("type") || "bomb";
+    incrementCounter(this.telemetry.powerup.collectedByType, type);
     powerUp.getData("label")?.destroy();
     this.tweens.killTweensOf(powerUp.getData("ring"));
     powerUp.getData("visual")?.destroy();
@@ -1513,14 +1548,17 @@ class GameScene extends Phaser.Scene {
   }
 
   activateMagnet() {
+    incrementCounter(this.telemetry.powerup.usedEffect, "magnetActivated");
     this.magnetUntil = this.time.now + 9000;
     this.score += 20;
     SoundFX.success();
     this.showFloatingText("MAGNET!", this.duck.x + 170, this.duck.y - 110, "#ffd43f");
     this.burst(this.duck.x + 28, this.duck.y - 20, ["pearlGold", "pearlPink", "pearlBlue"], 24, 0.12, 180);
+    this.showMagnetTrail();
   }
 
   activateShield() {
+    incrementCounter(this.telemetry.powerup.usedEffect, "shieldActivated");
     this.shieldCharges = Math.min(2, this.shieldCharges + 1);
     this.score += 25;
     SoundFX.success();
@@ -1530,6 +1568,7 @@ class GameScene extends Phaser.Scene {
   }
 
   activateTurbo() {
+    incrementCounter(this.telemetry.powerup.usedEffect, "turboActivated");
     this.turboUntil = this.time.now + 4800;
     this.invulnerableUntil = Math.max(this.invulnerableUntil, this.turboUntil);
     this.score += 30;
@@ -1551,13 +1590,15 @@ class GameScene extends Phaser.Scene {
   }
 
   activateQuackBomb() {
+    incrementCounter(this.telemetry.powerup.usedEffect, "bombActivated");
     this.bombFlashUntil = this.time.now + 1100;
     this.score += 35;
     this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
     this.cameras.main.shake(120, 0.006);
     this.burst(this.duck.x + 30, this.duck.y - 10, ["pearlGold", "pearlBlue", "quackBombV2"], 22, 0.15, 210);
 
-    const wave = this.add.image(this.duck.x, this.duck.y + 8, "fxQuackWave").setScale(0.16).setAlpha(0.88).setDepth(17);
+    const waveKey = this.textures.exists("fxQuackWavePrompt") ? "fxQuackWavePrompt" : "fxQuackWave";
+    const wave = this.add.image(this.duck.x, this.duck.y + 8, waveKey).setScale(waveKey === "fxQuackWavePrompt" ? 0.18 : 0.16).setAlpha(0.88).setDepth(17);
     this.tweens.add({
       targets: wave,
       scale: 1.05,
@@ -1586,6 +1627,7 @@ class GameScene extends Phaser.Scene {
       }
 
       cleared += 1;
+      this.recordChallengeOutcome(obstacle, "bombCleared");
       this.prepareObstacleForRemoval(obstacle);
       this.tweens.add({
         targets: obstacle,
@@ -1601,11 +1643,34 @@ class GameScene extends Phaser.Scene {
 
     if (cleared > 0) {
       this.score += cleared * 25;
+      incrementCounter(this.telemetry.powerup.usedEffect, "bombCleared", cleared);
     }
   }
 
+  showMagnetTrail() {
+    if (!this.textures.exists("fxMagnetPullTrail")) {
+      return;
+    }
+
+    const trail = this.add.image(this.duck.x + 8, this.duck.y + 4, "fxMagnetPullTrail").setScale(0.2).setAlpha(0.62).setDepth(17);
+    trail.setBlendMode(Phaser.BlendModes.SCREEN);
+    this.tweens.add({
+      targets: trail,
+      scale: 0.34,
+      angle: 16,
+      alpha: 0,
+      duration: 620,
+      ease: "Cubic.out",
+      onComplete: () => trail.destroy(),
+    });
+  }
+
   handleHit(_, obstacle) {
-    if (this.isGameOver || this.time.now < this.invulnerableUntil) {
+    if (this.isGameOver) {
+      return;
+    }
+
+    if (this.time.now < this.invulnerableUntil && !this.isTurboActive()) {
       return;
     }
 
@@ -1634,6 +1699,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.recordChallengeOutcome(obstacle, "hit");
     this.lives -= 1;
     this.combo = 0;
     this.comboText.setText("");
@@ -1687,6 +1753,8 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.recordChallengeOutcome(obstacle, "turboCleared");
+    incrementCounter(this.telemetry.powerup.usedEffect, "turboCleared");
     this.score += 30;
     this.addCombo(3, "TURBO DURCH!", obstacle.x, obstacle.y - 90, "#ff70ad");
     SoundFX.success();
@@ -1704,6 +1772,8 @@ class GameScene extends Phaser.Scene {
   }
 
   absorbHit(obstacle) {
+    this.recordChallengeOutcome(obstacle, "absorbed");
+    incrementCounter(this.telemetry.powerup.usedEffect, "shieldAbsorb");
     this.shieldCharges -= 1;
     this.score += 20;
     this.addCombo(2, "SCHILD HAELT!", this.duck.x + 160, this.duck.y - 95, "#9df6ff");
@@ -1732,6 +1802,7 @@ class GameScene extends Phaser.Scene {
     const nextStats = this.persistGameResult(readPlayerName());
     const isNewHighscore = finalScore > previousHighscore;
     const isTopFive = nextStats.scores.some((entry) => entry.id === this.resultEntryId);
+    this.publishRunTelemetry(finalScore);
 
     const shade = makeScreenShade(this, 0.54, 30);
     const card = makeGlassPanel(this, 260, 96, 760, 522, 31, 0x086fc0);
@@ -1817,6 +1888,17 @@ class GameScene extends Phaser.Scene {
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyNameInput());
+  }
+
+  publishRunTelemetry(finalScore) {
+    this.telemetry.endedAt = new Date().toISOString();
+    this.telemetry.final = {
+      score: finalScore,
+      pearls: this.pearls,
+      runTime: Number(this.runTime.toFixed(2)),
+      lives: this.lives,
+    };
+    publishRunTelemetry(this.telemetry);
   }
 
   savePendingGameOverName() {
@@ -2060,10 +2142,14 @@ class GameScene extends Phaser.Scene {
     this.diveShade.setDepth(8);
 
     this.diveBubbleTrail?.destroy();
-    this.diveBubbleTrail = this.add.image(this.duck.x + 16, this.duck.y + 42, "fxUnderwaterBubbles");
-    this.diveBubbleTrail.setScale(0.3);
-    this.diveBubbleTrail.setAlpha(0.58);
+    const trailKey = this.textures.exists("fxDiveLaneTrail") ? "fxDiveLaneTrail" : "fxUnderwaterBubbles";
+    this.diveBubbleTrail = this.add.image(this.duck.x + 16, this.duck.y + 42, trailKey);
+    this.diveBubbleTrail.setScale(trailKey === "fxDiveLaneTrail" ? 0.16 : 0.3);
+    this.diveBubbleTrail.setAlpha(trailKey === "fxDiveLaneTrail" ? 0.54 : 0.58);
     this.diveBubbleTrail.setDepth(9);
+    if (trailKey === "fxDiveLaneTrail") {
+      this.diveBubbleTrail.setBlendMode(Phaser.BlendModes.SCREEN);
+    }
   }
 
   showDiveStatus() {
@@ -2430,6 +2516,7 @@ class GameScene extends Phaser.Scene {
         }
 
         obstacle.setData("passed", true);
+        this.recordChallengeOutcome(obstacle, "cleared");
         this.addCombo(1, "OBEN VORBEI!", obstacle.x, obstacle.y - 118, "#ff70ad");
       }
     });
@@ -2437,6 +2524,7 @@ class GameScene extends Phaser.Scene {
 
   scoreJumpObstacle(obstacle) {
     obstacle.setData("passed", true);
+    this.recordChallengeOutcome(obstacle, "cleared");
     this.score += 25;
     this.addCombo(2, "DRUEBER!", obstacle.x, obstacle.y - 82, "#ffd43f");
     SoundFX.success();
@@ -2449,6 +2537,7 @@ class GameScene extends Phaser.Scene {
   }
 
   stompObstacle(obstacle) {
+    this.recordChallengeOutcome(obstacle, "cleared");
     this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 54;
     this.score += isPerfect ? 55 : 35;
@@ -2515,6 +2604,7 @@ class GameScene extends Phaser.Scene {
     }
 
     obstacle.setData("passed", true);
+    this.recordChallengeOutcome(obstacle, "cleared");
     this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 64;
     this.score += isPerfect ? 50 : 30;
@@ -3314,6 +3404,46 @@ function addFittedText(scene, x, y, value, style, maxWidth, options = {}) {
   const measuredWidth = Math.max(1, text.width);
   text.setScale(Math.min(1, maxWidth / measuredWidth));
   return text;
+}
+
+function createRunTelemetry() {
+  return {
+    startedAt: new Date().toISOString(),
+    endedAt: null,
+    final: null,
+    challenge: {
+      spawnedByMode: {},
+      clearedByMode: {},
+      hitByMode: {},
+      absorbedByMode: {},
+      turboClearedByMode: {},
+      bombClearedByMode: {},
+    },
+    reward: {
+      spawnedBySequence: {},
+      collectedBySequence: {},
+    },
+    powerup: {
+      spawnedByType: {},
+      collectedByType: {},
+      usedEffect: {},
+    },
+  };
+}
+
+function incrementCounter(bucket, key, amount = 1) {
+  const normalizedKey = key || "unknown";
+  bucket[normalizedKey] = (bucket[normalizedKey] || 0) + amount;
+}
+
+function publishRunTelemetry(telemetry) {
+  try {
+    const snapshot = JSON.parse(JSON.stringify(telemetry));
+    window.__duckDashLastRunTelemetry = snapshot;
+    localStorage.setItem(TELEMETRY_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Telemetry is diagnostic only; the run result should never depend on it.
+  }
 }
 
 function readStats() {
