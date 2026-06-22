@@ -26,6 +26,13 @@ const HUD_PAUSE_Y = 56;
 const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -80;
 const STOMP_HORIZONTAL_GRACE = 112;
+const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
+const MODE_CUE_CONFIG = {
+  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f },
+  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8 },
+  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f },
+  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76 },
+};
 const MENU_START_HIT = {
   x: 184,
   y: 597,
@@ -460,6 +467,12 @@ class GameScene extends Phaser.Scene {
     this.resultSaved = false;
     this.resultEntryId = "";
     this.nameInput = null;
+    this.hudCache = {
+      score: null,
+      pearls: null,
+      lives: null,
+      shieldCharges: null,
+    };
 
     addBackground(this);
     addWaterOverlay(this);
@@ -945,14 +958,26 @@ class GameScene extends Phaser.Scene {
         labelOffset: 132,
       },
       {
-        key: "whirlpoolV2",
-        y: WATERLINE - 18,
+        key: "obstacleSponge",
+        y: WATERLINE - 22,
         scale: 0.42,
-        speedBoost: 24,
-        body: [168, 90, 88, 44],
+        speedBoost: 22,
+        body: [208, 76, 76, 158],
         gap: 560,
         mode: "stomp",
         prompt: "DRAUF!",
+        labelOffset: 122,
+      },
+      {
+        key: "obstacleDuckRing",
+        y: WATERLINE - 22,
+        scale: 0.42,
+        speedBoost: 24,
+        body: [214, 72, 72, 158],
+        gap: 590,
+        mode: "stomp",
+        prompt: "DRAUF!",
+        labelOffset: 124,
       },
       {
         key: "underwaterCap",
@@ -1002,6 +1027,7 @@ class GameScene extends Phaser.Scene {
     } else if (pick.visual === "soapstack") {
       this.decorateSoapStack(obstacle);
     }
+    this.decorateModeCue(obstacle, pick);
 
     const labelColor = pick.mode === "dive" ? "#9df6ff" : pick.mode === "underwater" ? "#ff70ad" : "#ffd43f";
     const label = this.add.text(obstacle.x, obstacle.y - obstacle.getData("labelOffset"), pick.prompt, hudTextStyle(20, labelColor));
@@ -1077,33 +1103,53 @@ class GameScene extends Phaser.Scene {
 
   destroyObstacleVisuals(obstacle) {
     obstacle.getData("visual")?.destroy();
+    this.tweens.killTweensOf(obstacle.getData("cueRing"));
+    obstacle.getData("cue")?.destroy();
+  }
+
+  prepareObstacleForRemoval(obstacle) {
+    if (!obstacle?.active) {
+      return;
+    }
+
+    obstacle.body.enable = false;
+    this.tweens.killTweensOf(obstacle);
+    this.destroyObstacleVisuals(obstacle);
+    obstacle.getData("label")?.destroy();
+  }
+
+  decorateModeCue(obstacle, config) {
+    const cueConfig = MODE_CUE_CONFIG[config.mode];
+    if (!cueConfig) {
+      return;
+    }
+
+    const cue = this.add.container(obstacle.x - 250, obstacle.y - (config.labelOffset ?? 100));
+    cue.setDepth(10);
+    cue.setAlpha(0);
+    cue.setData("cleanup", true);
+
+    const ring = this.add.circle(0, 0, 34, cueConfig.fill, 0.42);
+    ring.setStrokeStyle(4, 0xffffff, 0.7);
+    const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
+    cue.add([ring, text]);
+
+    obstacle.setData("cue", cue);
+    obstacle.setData("cueRing", ring);
+    this.tweens.add({
+      targets: ring,
+      scale: 1.18,
+      alpha: 0.62,
+      yoyo: true,
+      repeat: -1,
+      duration: 520,
+      ease: "Sine.inOut",
+    });
   }
 
   spawnRewardTrailForObstacle(obstacle, config) {
     const trailId = (this.rewardTrailId += 1);
-    const isDive = config.mode === "dive";
-    const isJump = config.mode === "jump";
-    const points = isDive
-      ? [
-          { x: -290, y: WATER_SURFACE_Y + 82, key: "pearlBlue", underwater: true },
-          { x: -170, y: WATER_SURFACE_Y + 104, key: "pearlBlue", underwater: true },
-          { x: 58, y: WATER_SURFACE_Y + 116, key: "pearlGold", underwater: true },
-          { x: 158, y: WATER_SURFACE_Y + 92, key: "pearlPink", underwater: true },
-        ]
-      : isJump
-        ? [
-            { x: -236, y: WATER_SURFACE_Y - 54, key: "pearlPink" },
-            { x: -126, y: WATER_SURFACE_Y - 104, key: "pearlBlue" },
-            { x: 4, y: WATER_SURFACE_Y - 132, key: "pearlGold" },
-            { x: 140, y: WATER_SURFACE_Y - 92, key: "pearlBlue" },
-          ]
-        : [
-          { x: -248, y: WATER_SURFACE_Y + 8, key: "pearlPink" },
-          { x: -136, y: WATER_SURFACE_Y - 44, key: "pearlBlue" },
-          { x: -20, y: WATER_SURFACE_Y - 104, key: "pearlGold" },
-          { x: 104, y: WATER_SURFACE_Y + 108, key: "pearlBlue", underwater: true },
-          { x: 202, y: WATER_SURFACE_Y + 12, key: "pearlPink" },
-        ];
+    const points = this.getRewardTrailPoints(config.mode);
 
     points.forEach((point, index) => {
       this.time.delayedCall(index * 55, () => {
@@ -1114,6 +1160,50 @@ class GameScene extends Phaser.Scene {
         this.spawnPearlAt(obstacle.x + point.x, point.y, point.key, -this.speed - config.speedBoost, trailId, { underwater: point.underwater });
       });
     });
+  }
+
+  getRewardTrailPoints(mode) {
+    if (mode === "dive") {
+      return [
+        { x: -310, y: WATER_SURFACE_Y + 78, key: "pearlBlue", underwater: true },
+        { x: -190, y: WATER_SURFACE_Y + 104, key: "pearlBlue", underwater: true },
+        { x: -48, y: WATER_SURFACE_Y + 118, key: "pearlGold", underwater: true },
+        { x: 108, y: WATER_SURFACE_Y + 94, key: "pearlPink", underwater: true },
+      ];
+    }
+
+    if (mode === "jump") {
+      return [
+        { x: -252, y: WATER_SURFACE_Y - 50, key: "pearlPink" },
+        { x: -146, y: WATER_SURFACE_Y - 98, key: "pearlBlue" },
+        { x: -20, y: WATER_SURFACE_Y - 132, key: "pearlGold" },
+        { x: 124, y: WATER_SURFACE_Y - 88, key: "pearlBlue" },
+      ];
+    }
+
+    if (mode === "stomp") {
+      return [
+        { x: -282, y: WATER_SURFACE_Y - 112, key: "pearlBlue" },
+        { x: -168, y: WATER_SURFACE_Y - 76, key: "pearlPink" },
+        { x: -34, y: WATER_SURFACE_Y - 42, key: "pearlGold" },
+        { x: 112, y: WATER_SURFACE_Y - 18, key: "pearlBlue" },
+      ];
+    }
+
+    if (mode === "underwater") {
+      return [
+        { x: -278, y: WATER_SURFACE_Y - 72, key: "pearlPink" },
+        { x: -156, y: WATER_SURFACE_Y - 58, key: "pearlBlue" },
+        { x: -24, y: WATER_SURFACE_Y - 44, key: "pearlGold" },
+        { x: 122, y: WATER_SURFACE_Y - 30, key: "pearlPink" },
+      ];
+    }
+
+    return [
+      { x: -220, y: WATER_SURFACE_Y - 42, key: "pearlPink" },
+      { x: -90, y: WATER_SURFACE_Y - 64, key: "pearlBlue" },
+      { x: 44, y: WATER_SURFACE_Y - 42, key: "pearlGold" },
+    ];
   }
 
   spawnPearlAt(x, y, key, velocityX, trailId = null, options = {}) {
@@ -1149,6 +1239,10 @@ class GameScene extends Phaser.Scene {
 
   spawnCollectible() {
     if (WATER_TUNING_MODE || this.isGameOver || this.isPaused) {
+      return;
+    }
+
+    if (this.hasActiveChallengeCollectibleWindow()) {
       return;
     }
 
@@ -1382,9 +1476,7 @@ class GameScene extends Phaser.Scene {
       }
 
       cleared += 1;
-      obstacle.body.enable = false;
-      this.destroyObstacleVisuals(obstacle);
-      obstacle.getData("label")?.destroy();
+      this.prepareObstacleForRemoval(obstacle);
       this.tweens.add({
         targets: obstacle,
         x: obstacle.x + 210,
@@ -1441,9 +1533,7 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.shake(150, 0.007);
 
     if (obstacle?.active) {
-      obstacle.body.enable = false;
-      this.destroyObstacleVisuals(obstacle);
-      obstacle.getData("label")?.destroy();
+      this.prepareObstacleForRemoval(obstacle);
       this.tweens.add({
         targets: obstacle,
         x: obstacle.x + 150,
@@ -1490,9 +1580,7 @@ class GameScene extends Phaser.Scene {
     this.score += 30;
     this.addCombo(3, "TURBO DURCH!", obstacle.x, obstacle.y - 90, "#ff70ad");
     SoundFX.success();
-    obstacle.body.enable = false;
-    this.destroyObstacleVisuals(obstacle);
-    obstacle.getData("label")?.destroy();
+    this.prepareObstacleForRemoval(obstacle);
     this.burst(obstacle.x, obstacle.y, ["pearlPink", "pearlGold"], 22, 0.12, 160);
     this.tweens.add({
       targets: obstacle,
@@ -1514,9 +1602,7 @@ class GameScene extends Phaser.Scene {
     this.burst(this.duck.x + 28, this.duck.y - 8, ["pearlBlue"], 26, 0.13, 170);
 
     if (obstacle?.active) {
-      obstacle.body.enable = false;
-      this.destroyObstacleVisuals(obstacle);
-      obstacle.getData("label")?.destroy();
+      this.prepareObstacleForRemoval(obstacle);
       this.tweens.add({
         targets: obstacle,
         x: obstacle.x + 150,
@@ -1921,14 +2007,27 @@ class GameScene extends Phaser.Scene {
   }
 
   updateHud() {
-    this.scoreText.setText(Math.floor(this.score).toLocaleString("de-DE"));
-    this.pearlText.setText(this.pearls.toLocaleString("de-DE"));
-    this.lifeBubbles.forEach((bubble, index) => {
-      const alive = index < this.lives;
-      bubble.setAlpha(alive ? 0.86 : 0.2);
-      bubble.setScale(alive ? (index < this.shieldCharges ? 0.058 : 0.052) : 0.04);
-      setHeartIconColor(bubble, index < this.shieldCharges ? 0x9df6ff : 0xff3f76);
-    });
+    const scoreValue = Math.floor(this.score);
+    if (this.hudCache.score !== scoreValue) {
+      this.hudCache.score = scoreValue;
+      this.scoreText.setText(scoreValue.toLocaleString("de-DE"));
+    }
+
+    if (this.hudCache.pearls !== this.pearls) {
+      this.hudCache.pearls = this.pearls;
+      this.pearlText.setText(this.pearls.toLocaleString("de-DE"));
+    }
+
+    if (this.hudCache.lives !== this.lives || this.hudCache.shieldCharges !== this.shieldCharges) {
+      this.hudCache.lives = this.lives;
+      this.hudCache.shieldCharges = this.shieldCharges;
+      this.lifeBubbles.forEach((bubble, index) => {
+        const alive = index < this.lives;
+        bubble.setAlpha(alive ? 0.86 : 0.2);
+        bubble.setScale(alive ? (index < this.shieldCharges ? 0.058 : 0.052) : 0.04);
+        setHeartIconColor(bubble, index < this.shieldCharges ? 0x9df6ff : 0xff3f76);
+      });
+    }
     this.updatePowerHud();
   }
 
@@ -2198,9 +2297,7 @@ class GameScene extends Phaser.Scene {
   }
 
   stompObstacle(obstacle) {
-    obstacle.body.enable = false;
-    this.destroyObstacleVisuals(obstacle);
-    obstacle.getData("label")?.destroy();
+    this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 54;
     this.score += isPerfect ? 55 : 35;
     this.addCombo(isPerfect ? 5 : 3, isPerfect ? "PERFEKT DRAUF!" : "PLATSCH!", obstacle.x, obstacle.y - 90, "#ffd43f");
@@ -2227,6 +2324,12 @@ class GameScene extends Phaser.Scene {
   updateObstacleLabels() {
     this.obstacles.getChildren().forEach((obstacle) => {
       this.syncObstacleVisuals(obstacle);
+      const cue = obstacle.getData("cue");
+      if (cue?.active) {
+        const labelOffset = obstacle.getData("labelOffset") ?? 100;
+        cue.setPosition(obstacle.x - 250, obstacle.y - labelOffset);
+        cue.setAlpha(Phaser.Math.Clamp((obstacle.x - 460) / 260, 0, 0.95));
+      }
       const label = obstacle.getData("label");
       if (!label?.active) {
         return;
@@ -2260,9 +2363,7 @@ class GameScene extends Phaser.Scene {
     }
 
     obstacle.setData("passed", true);
-    obstacle.body.enable = false;
-    this.destroyObstacleVisuals(obstacle);
-    obstacle.getData("label")?.destroy();
+    this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 64;
     this.score += isPerfect ? 50 : 30;
     this.addCombo(isPerfect ? 5 : 3, isPerfect ? "KNAPP GETAUCHT!" : "SAUBER DRUNTER!", obstacle.x, obstacle.y + 68, "#9df6ff");
@@ -2368,6 +2469,12 @@ class GameScene extends Phaser.Scene {
 
   hasObstacleGap(requiredGap) {
     return !this.obstacles.getChildren().some((obstacle) => obstacle.active && obstacle.x > GAME_WIDTH - requiredGap);
+  }
+
+  hasActiveChallengeCollectibleWindow() {
+    return this.obstacles
+      .getChildren()
+      .some((obstacle) => obstacle.active && obstacle.x > GAME_WIDTH - CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE && obstacle.x < GAME_WIDTH + 240);
   }
 
   getObstacleDelay() {
@@ -2838,6 +2945,12 @@ function updateSpecialSlot(slot, badgeValue, active) {
     return;
   }
 
+  if (slot.badgeValue === badgeValue && slot.activeState === active) {
+    return;
+  }
+
+  slot.badgeValue = badgeValue;
+  slot.activeState = active;
   slot.container.setAlpha(active ? 1 : 0.58);
   slot.container.setScale(active ? 1.06 : 1);
   slot.glow.setAlpha(active ? 0.3 : 0.1);
