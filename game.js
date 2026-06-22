@@ -5,6 +5,9 @@ const WATERLINE = 500;
 const DUCK_WATERLINE = 476;
 const WATER_TUNING_MODE = false;
 const STORAGE_KEY = "duck-dash-stats";
+const PLAYER_NAME_KEY = "duck-dash-player-name";
+const DEFAULT_PLAYER_NAME = "BadeEnte";
+const FALLBACK_NAMES = ["QuakMeister", "SplashKing", "DuckHero", "BadeEnte", "WaterNinja"];
 const COLLECTIBLE_LANES = [292, 256, 220];
 const DIVE_MIN_DURATION = 260;
 const DIVE_MAX_DURATION = 680;
@@ -104,30 +107,61 @@ class BootScene extends Phaser.Scene {
     this.load.image("bg", "assets/bathroom_bg_flooded.png?v=20260621-bg1");
     this.load.image("logo", "assets/logo.png");
     this.load.image("duck", "assets/duck.png");
-    this.load.image("soap", "assets/soap.png");
-    this.load.image("soapV2", "assets/soap_v2.png?v=20260621-assets3");
+    this.load.image("soap", "assets/soap.png?v=20260622-assets-ui1");
+    this.load.image("soapV2", "assets/soap_v2.png?v=20260622-assets-ui1");
     this.load.image("toothbrush", "assets/toothbrush.png");
     this.load.image("whirlpool", "assets/whirlpool.png");
-    this.load.image("whirlpoolV2", "assets/whirlpool_v2.png?v=20260621-assets3");
-    this.load.image("pearlPink", "assets/pearl_pink.png");
-    this.load.image("pearlBlue", "assets/pearl_blue.png");
-    this.load.image("pearlGold", "assets/pearl_gold.png");
-    this.load.image("shellPearl", "assets/shell_pearl.png?v=20260621-assets3");
-    this.load.image("starfishBonus", "assets/starfish_bonus.png?v=20260621-assets3");
-    this.load.image("underwaterPearls", "assets/underwater_pearls.png?v=20260621-underwater1");
+    this.load.image("whirlpoolV2", "assets/whirlpool_v2.png?v=20260622-assets-ui1");
+    this.load.image("pearlPink", "assets/pearl_pink.png?v=20260622-assets-ui1");
+    this.load.image("pearlBlue", "assets/pearl_blue.png?v=20260622-assets-ui1");
+    this.load.image("pearlGold", "assets/pearl_gold.png?v=20260622-assets-ui1");
+    this.load.image("shellPearl", "assets/shell_pearl.png?v=20260622-assets-ui1");
+    this.load.image("starfishBonus", "assets/starfish_bonus.png?v=20260622-assets-ui1");
+    this.load.image("underwaterPearls", "assets/underwater_pearls.png?v=20260622-assets-ui1");
     this.load.image("quackBomb", "assets/quack_bomb.png");
-    this.load.image("quackBombV2", "assets/quack_bomb_v2.png?v=20260621-assets3");
+    this.load.image("quackBombV2", "assets/quack_bomb_v2.png?v=20260622-assets-ui1");
     this.load.image("cupBrush", "assets/cup_brush.png");
-    this.load.image("cupBrushV2", "assets/cup_brush_v2.png?v=20260621-assets3");
-    this.load.image("underwaterCap", "assets/underwater_cap.png?v=20260621-underwater1");
-    this.load.image("drainPlug", "assets/drain_plug.png?v=20260621-underwater1");
+    this.load.image("cupBrushV2", "assets/cup_brush_v2.png?v=20260622-assets-ui1");
+    this.load.image("underwaterCap", "assets/underwater_cap.png?v=20260622-assets-ui1");
+    this.load.image("drainPlug", "assets/drain_plug.png?v=20260622-assets-ui1");
     this.load.image("waterCurrent", "assets/water_current.png?v=20260621-underwater1");
     this.load.image("powerupMagnet", "assets/powerup_magnet.png");
     this.load.image("powerupShield", "assets/powerup_shield.png");
     this.load.image("powerupTurbo", "assets/powerup_turbo.png");
-    this.load.image("powerupMagnetV2", "assets/powerup_magnet_v2.png?v=20260621-assets3");
-    this.load.image("powerupShieldV2", "assets/powerup_shield_v2.png?v=20260621-assets3");
-    this.load.image("powerupTurboV2", "assets/powerup_turbo_v2.png?v=20260621-assets3");
+    this.load.image("powerupMagnetV2", "assets/powerup_magnet_v2.png?v=20260622-assets-ui1");
+    this.load.image("powerupShieldV2", "assets/powerup_shield_v2.png?v=20260622-assets-ui1");
+    this.load.image("powerupTurboV2", "assets/powerup_turbo_v2.png?v=20260622-assets-ui1");
+    this.load.image("uiPause", "assets/ui_pause.png?v=20260622-assets-ui1");
+    this.load.image("uiHeart", "assets/ui_heart.png?v=20260622-assets-ui1");
+    this.load.image("uiTrophy", "assets/ui_trophy.png?v=20260622-assets-ui1");
+    this.load.image("duckHero", "assets/duck_hero.png?v=20260622-assets-ui1");
+    this.load.image("duckGameOver", "assets/duck_gameover.png?v=20260622-assets-ui1");
+    this.load.image("duckVictory", "assets/duck_victory.png?v=20260622-assets-ui1");
+    this.load.image("uiPanelLarge", "assets/ui_panel_large.png?v=20260622-assets-ui1");
+    this.load.image("uiPanelSmall", "assets/ui_panel_small.png?v=20260622-assets-ui1");
+    this.load.image("uiButtonPrimary", "assets/ui_button_primary.png?v=20260622-assets-ui1");
+    this.load.image("uiButtonSecondary", "assets/ui_button_secondary.png?v=20260622-assets-ui1");
+    this.load.image("uiButtonDanger", "assets/ui_button_danger.png?v=20260622-assets-ui1");
+    this.load.image("uiInputName", "assets/ui_input_name.png?v=20260622-assets-ui1");
+    this.load.image("uiNameBadge", "assets/ui_name_badge.png?v=20260622-assets-ui1");
+    this.load.image("uiHome", "assets/ui_home.png?v=20260622-assets-ui1");
+    this.load.image("uiPlay", "assets/ui_play.png?v=20260622-assets-ui1");
+    this.load.image("uiRestart", "assets/ui_restart.png?v=20260622-assets-ui1");
+    this.load.image("uiScoreCoin", "assets/ui_score_coin.png?v=20260622-assets-ui1");
+    this.load.image("uiPearlCounter", "assets/ui_pearl_counter.png?v=20260622-assets-ui1");
+    this.load.image("obstacleSponge", "assets/obstacle_sponge.png?v=20260622-assets-ui1");
+    this.load.image("obstacleDuckRing", "assets/obstacle_duck_ring.png?v=20260622-assets-ui1");
+    this.load.image("obstacleToyBoat", "assets/obstacle_rubber_boat_toy.png?v=20260622-assets-ui1");
+    this.load.image("obstacleRazorUnderwater", "assets/obstacle_razor_underwater.png?v=20260622-assets-ui1");
+    this.load.image("obstacleBubbleGate", "assets/obstacle_bubble_gate.png?v=20260622-assets-ui1");
+    this.load.image("obstacleTowelSink", "assets/obstacle_towel_sink.png?v=20260622-assets-ui1");
+    this.load.image("powerupHeart", "assets/powerup_heart.png?v=20260622-assets-ui1");
+    this.load.image("fxSplashSmall", "assets/fx_splash_small.png?v=20260622-assets-ui1");
+    this.load.image("fxSplashBig", "assets/fx_splash_big.png?v=20260622-assets-ui1");
+    this.load.image("fxBubblePop", "assets/fx_bubble_pop.png?v=20260622-assets-ui1");
+    this.load.image("fxQuackWave", "assets/fx_quack_wave.png?v=20260622-assets-ui1");
+    this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
+    this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
   }
 
   create() {
@@ -146,22 +180,15 @@ class MenuScene extends Phaser.Scene {
     addBackground(this);
     addWaterOverlay(this);
 
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x06253d, 0.24);
-    shade.setDepth(1);
+    makeScreenShade(this, 0.26, 1);
+    makeGlassPanel(this, 338, 44, 604, 640, 2);
 
-    const card = this.add.graphics();
-    card.setDepth(2);
-    card.fillStyle(0x0a3a5d, 0.4);
-    card.fillRoundedRect(360, 48, 560, 630, 28);
-    card.lineStyle(4, 0x80f2ff, 0.46);
-    card.strokeRoundedRect(360, 48, 560, 630, 28);
-
-    this.add.image(GAME_WIDTH / 2, 170, "logo").setScale(1.02).setDepth(3);
+    this.add.image(GAME_WIDTH / 2, 132, "logo").setScale(0.66).setDepth(3);
 
     this.add
-      .text(GAME_WIDTH / 2, 318, "Spring. Tauch. Sammle Perlen.", {
+      .text(GAME_WIDTH / 2, 244, "Spring. Tauch. Sammle Perlen.", {
         fontFamily: "Trebuchet MS",
-        fontSize: "30px",
+        fontSize: "26px",
         fontStyle: "700",
         color: "#ffffff",
         stroke: "#123044",
@@ -171,7 +198,7 @@ class MenuScene extends Phaser.Scene {
       .setDepth(3);
 
     this.highscoreText = this.add
-      .text(GAME_WIDTH / 2, 374, `Highscore ${this.stats.highscore.toLocaleString("de-DE")}`, {
+      .text(GAME_WIDTH / 2, 320, `Highscore ${this.stats.highscore.toLocaleString("de-DE")}`, {
         fontFamily: "Trebuchet MS",
         fontSize: "28px",
         fontStyle: "700",
@@ -180,15 +207,15 @@ class MenuScene extends Phaser.Scene {
         strokeThickness: 5,
       })
       .setOrigin(0.5)
-      .setDepth(3);
+      .setDepth(5);
 
-    this.add.image(GAME_WIDTH / 2 - 142, 472, "pearlPink").setScale(0.56).setDepth(3);
-    this.add.image(GAME_WIDTH / 2 + 148, 462, "pearlBlue").setScale(0.56).setDepth(3);
-    this.duck = this.add.image(GAME_WIDTH / 2, 500, "duck").setScale(0.84).setDepth(4);
+    this.add.image(GAME_WIDTH / 2 - 208, 404, "pearlPink").setScale(0.5).setDepth(3);
+    this.add.image(GAME_WIDTH / 2 + 208, 398, "pearlBlue").setScale(0.5).setDepth(3);
+    this.duck = this.add.image(GAME_WIDTH / 2, 430, "duckHero").setScale(0.255).setDepth(4);
     this.tweens.add({
       targets: this.duck,
-      y: 484,
-      angle: -4,
+      y: 418,
+      angle: -3,
       yoyo: true,
       repeat: -1,
       duration: 850,
@@ -200,7 +227,7 @@ class MenuScene extends Phaser.Scene {
       callback: () => this.menuSplash(this.duck.x - 54, this.duck.y + 42),
     });
 
-    const startButton = makeButton(this, GAME_WIDTH / 2, 554, "START");
+    const startButton = makeButton(this, GAME_WIDTH / 2, 548, "START");
     startButton.setDepth(5);
     startButton.on("pointerdown", () => this.startGame());
     this.tweens.add({
@@ -212,7 +239,7 @@ class MenuScene extends Phaser.Scene {
       ease: "Sine.inOut",
     });
 
-    const highscoreButton = makeButton(this, GAME_WIDTH / 2, 630, "HIGHSCORE");
+    const highscoreButton = makeButton(this, GAME_WIDTH / 2, 626, "HIGHSCORE");
     highscoreButton.setDepth(5);
     highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
 
@@ -317,21 +344,16 @@ class HighscoreScene extends Phaser.Scene {
     addBackground(this);
     addWaterOverlay(this);
 
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, 0.42).setDepth(1);
+    makeScreenShade(this, 0.42, 1);
+    makeGlassPanel(this, 286, 56, 708, 604, 2);
 
-    const card = this.add.graphics();
-    card.setDepth(2);
-    card.fillStyle(0x0a3a5d, 0.9);
-    card.fillRoundedRect(300, 76, 680, 560, 26);
-    card.lineStyle(4, 0x69e8ff, 0.55);
-    card.strokeRoundedRect(300, 76, 680, 560, 26);
-
-    this.add.image(GAME_WIDTH / 2, 142, "logo").setScale(0.72).setDepth(3);
-    this.add.text(GAME_WIDTH / 2, 238, "HIGHSCORE", titleStyle(46, "#ffd43f")).setOrigin(0.5).setDepth(3);
+    this.add.image(424, 150, "uiTrophy").setScale(0.16).setDepth(3);
+    this.add.image(674, 126, "logo").setScale(0.58).setDepth(3);
+    this.add.text(GAME_WIDTH / 2, 226, "HIGHSCORE", titleStyle(48, "#ffd43f")).setOrigin(0.5).setDepth(3);
     this.add
       .text(
         GAME_WIDTH / 2,
-        296,
+        282,
         `Bestwert ${this.stats.highscore.toLocaleString("de-DE")}   Runden ${this.stats.games.toLocaleString("de-DE")}`,
         hudTextStyle(24, "#9df6ff"),
       )
@@ -340,25 +362,29 @@ class HighscoreScene extends Phaser.Scene {
 
     const scores = this.stats.scores.slice(0, 5);
     if (scores.length === 0) {
-      this.add.text(GAME_WIDTH / 2, 404, "Noch keine Runde gespeichert", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(3);
+      this.add.text(GAME_WIDTH / 2, 408, "Noch keine Runde gespeichert", hudTextStyle(28, "#ffffff")).setOrigin(0.5).setDepth(3);
     } else {
       scores.forEach((entry, index) => {
-        const y = 366 + index * 48;
+        const y = 350 + index * 50;
         const rankColor = index === 0 ? "#ffd43f" : "#ffffff";
-        this.add.text(402, y, `${index + 1}.`, hudTextStyle(26, rankColor)).setOrigin(0, 0.5).setDepth(3);
-        this.add.text(470, y, entry.score.toLocaleString("de-DE"), hudTextStyle(28, rankColor)).setOrigin(0, 0.5).setDepth(3);
+        const row = this.add.graphics().setDepth(3);
+        row.fillStyle(index === 0 ? 0x0b62c9 : 0x06324b, index === 0 ? 0.44 : 0.28);
+        row.fillRoundedRect(382, y - 22, 516, 44, 14);
+        this.add.text(410, y, `${index + 1}.`, hudTextStyle(24, rankColor)).setOrigin(0, 0.5).setDepth(4);
+        this.add.text(466, y, sanitizePlayerName(entry.name), hudTextStyle(24, rankColor)).setOrigin(0, 0.5).setDepth(4);
+        this.add.text(690, y, entry.score.toLocaleString("de-DE"), hudTextStyle(26, rankColor)).setOrigin(1, 0.5).setDepth(4);
         this.add
-          .text(704, y, entry.pearls > 0 ? `${entry.pearls.toLocaleString("de-DE")} Perlen` : "Bestwert", hudTextStyle(22, "#9df6ff"))
+          .text(728, y, entry.pearls > 0 ? `${entry.pearls.toLocaleString("de-DE")} Perlen` : "Bestwert", hudTextStyle(20, "#9df6ff"))
           .setOrigin(0, 0.5)
-          .setDepth(3);
+          .setDepth(4);
       });
     }
 
-    const startButton = makeButton(this, GAME_WIDTH / 2 - 150, 574, "START");
+    const startButton = makeButton(this, GAME_WIDTH / 2 - 150, 590, "START");
     startButton.setDepth(4);
     startButton.on("pointerdown", () => this.scene.start("GameScene"));
 
-    const backButton = makeButton(this, GAME_WIDTH / 2 + 170, 574, "ZURUECK");
+    const backButton = makeButton(this, GAME_WIDTH / 2 + 150, 590, "ZURUECK");
     backButton.setDepth(4);
     backButton.on("pointerdown", () => this.scene.start("MenuScene"));
 
@@ -422,6 +448,9 @@ class GameScene extends Phaser.Scene {
     this.cupBrushIntroduced = false;
     this.pendingPowerUpRetry = false;
     this.nextPowerUpAt = 0;
+    this.resultSaved = false;
+    this.resultEntryId = "";
+    this.nameInput = null;
 
     addBackground(this);
     addWaterOverlay(this);
@@ -493,9 +522,9 @@ class GameScene extends Phaser.Scene {
 
   createHud() {
     this.lifeHud = makeLifePill(this, 24, 24);
-    this.scoreHud = makeHudPill(this, 180, 24, 198, "pearlGold", 0.34, "#ffffff");
+    this.scoreHud = makeHudPill(this, 180, 24, 198, "uiScoreCoin", 0.055, "#ffffff");
     this.scoreText = this.scoreHud.text;
-    this.pearlHud = makeHudPill(this, 398, 24, 152, "pearlPink", 0.3, "#ffd43f");
+    this.pearlHud = makeHudPill(this, 398, 24, 152, "uiPearlCounter", 0.055, "#ffd43f");
     this.pearlText = this.pearlHud.text;
     this.lifeBubbles = this.lifeHud.hearts;
     this.comboText = this.add.text(GAME_WIDTH / 2, 120, "", hudTextStyle(26, "#ffd43f")).setOrigin(0.5).setDepth(21);
@@ -615,28 +644,45 @@ class GameScene extends Phaser.Scene {
   }
 
   handlePausePointer(pointer) {
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 348, "WEITER")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 388, "WEITER")) {
       this.resumeGame();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 438, "BEENDEN")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 468, "NEUSTART")) {
+      this.scene.restart();
+      return;
+    }
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 548, "BEENDEN")) {
       this.exitToMenu();
     }
   }
 
   handleGameOverPointer(pointer) {
-    if (isWithinButton(pointer, GAME_WIDTH / 2, 464, "NOCHMAL")) {
+    const isTopFive = this.stats.scores.some((entry) => entry.id === this.resultEntryId);
+    const buttonY = isTopFive ? 578 : 486;
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2, 496, "SPEICHERN") && this.nameInput) {
+      this.persistGameResult(this.nameInput.value);
+      this.destroyNameInput();
+      return;
+    }
+
+    if (isWithinButton(pointer, GAME_WIDTH / 2 - 210, buttonY, "NOCHMAL")) {
+      this.destroyNameInput();
       this.scene.restart();
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2 - 150, 542, "HIGHSCORE")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2 + 40, buttonY, "HIGHSCORE")) {
+      this.destroyNameInput();
       this.scene.start("HighscoreScene");
       return;
     }
 
-    if (isWithinButton(pointer, GAME_WIDTH / 2 + 170, 542, "MENUE")) {
+    if (isWithinButton(pointer, GAME_WIDTH / 2 + 275, buttonY, "MENUE")) {
+      this.destroyNameInput();
       this.scene.start("MenuScene");
     }
   }
@@ -1444,39 +1490,21 @@ class GameScene extends Phaser.Scene {
 
   saveAndShowGameOver() {
     const finalScore = Math.floor(this.score);
-    const isNewHighscore = finalScore > this.stats.highscore;
-    const scores = [
-      ...this.stats.scores,
-      {
-        score: finalScore,
-        pearls: this.pearls,
-        date: new Date().toISOString(),
-      },
-    ]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-    const nextStats = {
-      highscore: Math.max(this.stats.highscore, finalScore, scores[0]?.score ?? 0),
-      games: this.stats.games + 1,
-      scores,
-    };
-    writeStats(nextStats);
+    const previousHighscore = this.stats.highscore;
+    const nextStats = this.persistGameResult(readPlayerName());
+    const isNewHighscore = finalScore > previousHighscore;
+    const isTopFive = nextStats.scores.some((entry) => entry.id === this.resultEntryId);
 
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, 0.72);
-    shade.setDepth(30);
-
-    const card = this.add.graphics();
-    card.setDepth(31);
-    card.fillStyle(0x0a3a5d, 0.94);
-    card.fillRoundedRect(350, 132, 580, 442, 24);
-    card.lineStyle(4, 0x69e8ff, 0.55);
-    card.strokeRoundedRect(350, 132, 580, 442, 24);
+    const shade = makeScreenShade(this, 0.68, 30);
+    const card = makeGlassPanel(this, 310, 88, 660, 552, 31);
+    const trophy = this.add.image(430, 184, "uiTrophy").setScale(0.16).setDepth(32);
+    const gameOverDuck = this.add.image(850, 226, "duckGameOver").setScale(0.24).setDepth(32);
 
     const title = isNewHighscore ? "NEUER ENTENREKORD!" : "ENTE GESTOPPT";
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
-    this.add.text(GAME_WIDTH / 2, 202, title, titleStyle(46, titleColor)).setOrigin(0.5).setDepth(32);
+    this.add.text(GAME_WIDTH / 2, 158, title, titleStyle(44, titleColor)).setOrigin(0.5).setDepth(32);
     const scoreText = this.add
-      .text(GAME_WIDTH / 2, 300, `${finalScore.toLocaleString("de-DE")}`, titleStyle(78, "#ffffff"))
+      .text(GAME_WIDTH / 2, 258, `${finalScore.toLocaleString("de-DE")}`, titleStyle(76, "#ffffff"))
       .setOrigin(0.5)
       .setDepth(32)
       .setScale(0.78);
@@ -1489,17 +1517,34 @@ class GameScene extends Phaser.Scene {
     this.add
       .text(
         GAME_WIDTH / 2,
-        374,
+        334,
         `Perlen ${this.pearls.toLocaleString("de-DE")}   Highscore ${nextStats.highscore.toLocaleString("de-DE")}`,
         hudTextStyle(26, "#ffd43f"),
       )
       .setOrigin(0.5)
       .setDepth(32);
 
+    let saveButton = null;
+    let nameLabel = null;
+    if (isTopFive) {
+      nameLabel = this.add.text(GAME_WIDTH / 2, 390, "Name fuer die Bestenliste", hudTextStyle(20, "#9df6ff")).setOrigin(0.5).setDepth(32);
+      this.add.image(GAME_WIDTH / 2, 436, "uiInputName").setDisplaySize(338, 58).setDepth(32);
+      this.createNameInput(readPlayerName(), 482, 414, 316, 44);
+      saveButton = makeButton(this, GAME_WIDTH / 2, 496, "SPEICHERN");
+      saveButton.setDepth(32);
+      saveButton.on("pointerdown", () => {
+        const savedStats = this.persistGameResult(this.nameInput?.value || readPlayerName());
+        this.destroyNameInput();
+        nameLabel?.setText(`Gespeichert als ${savedStats.scores.find((entry) => entry.id === this.resultEntryId)?.name || readPlayerName()}`);
+        saveButton?.setAlpha(0.5);
+        saveButton?.disableInteractive();
+      });
+    }
+
     if (isNewHighscore) {
       this.cameras.main.shake(150, 0.006);
-      this.burst(GAME_WIDTH / 2, 250, ["pearlGold", "pearlPink", "pearlBlue"], 42, 0.16, 290, 33);
-      const ring = this.add.circle(GAME_WIDTH / 2, 306, 30);
+      this.burst(GAME_WIDTH / 2, 242, ["pearlGold", "pearlPink", "pearlBlue"], 42, 0.16, 290, 33);
+      const ring = this.add.circle(GAME_WIDTH / 2, 260, 30);
       ring.setDepth(32);
       ring.setStrokeStyle(7, 0xffd43f, 0.85);
       this.tweens.add({
@@ -1512,17 +1557,100 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const again = makeButton(this, GAME_WIDTH / 2, 464, "NOCHMAL");
+    const buttonY = isTopFive ? 578 : 486;
+    const again = makeButton(this, GAME_WIDTH / 2 - 210, buttonY, "NOCHMAL");
     again.setDepth(32);
-    again.on("pointerdown", () => this.scene.restart());
+    again.on("pointerdown", () => {
+      this.destroyNameInput();
+      this.scene.restart();
+    });
 
-    const highscore = makeButton(this, GAME_WIDTH / 2 - 150, 542, "HIGHSCORE");
+    const highscore = makeButton(this, GAME_WIDTH / 2 + 40, buttonY, "HIGHSCORE");
     highscore.setDepth(32);
-    highscore.on("pointerdown", () => this.scene.start("HighscoreScene"));
+    highscore.on("pointerdown", () => {
+      this.destroyNameInput();
+      this.scene.start("HighscoreScene");
+    });
 
-    const menu = makeButton(this, GAME_WIDTH / 2 + 170, 542, "MENUE");
+    const menu = makeButton(this, GAME_WIDTH / 2 + 275, buttonY, "MENUE");
     menu.setDepth(32);
-    menu.on("pointerdown", () => this.scene.start("MenuScene"));
+    menu.on("pointerdown", () => {
+      this.destroyNameInput();
+      this.scene.start("MenuScene");
+    });
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyNameInput());
+  }
+
+  persistGameResult(name) {
+    const finalScore = Math.floor(this.score);
+    const cleanName = sanitizePlayerName(name);
+    writePlayerName(cleanName);
+
+    const currentStats = readStats();
+    const entryId = this.resultEntryId || `${Date.now()}-${Phaser.Math.Between(1000, 9999)}`;
+    const existingScores = currentStats.scores.filter((entry) => entry.id !== entryId);
+    const resultEntry = {
+      id: entryId,
+      name: cleanName,
+      score: finalScore,
+      pearls: this.pearls,
+      date: new Date().toISOString(),
+    };
+    const scores = finalScore > 0 ? [...existingScores, resultEntry].sort((a, b) => b.score - a.score).slice(0, 5) : existingScores;
+    const nextStats = {
+      highscore: Math.max(currentStats.highscore, finalScore, scores[0]?.score ?? 0),
+      games: currentStats.games + (this.resultSaved ? 0 : 1),
+      scores,
+    };
+
+    this.resultSaved = true;
+    this.resultEntryId = entryId;
+    this.stats = nextStats;
+    writeStats(nextStats);
+    return nextStats;
+  }
+
+  createNameInput(initialName, x, y, width, height) {
+    this.destroyNameInput();
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = sanitizePlayerName(initialName);
+    input.maxLength = 12;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.style.position = "fixed";
+    input.style.left = `${rect.left + (x / GAME_WIDTH) * rect.width}px`;
+    input.style.top = `${rect.top + (y / GAME_HEIGHT) * rect.height}px`;
+    input.style.width = `${(width / GAME_WIDTH) * rect.width}px`;
+    input.style.height = `${(height / GAME_HEIGHT) * rect.height}px`;
+    input.style.zIndex = "1000";
+    input.style.border = "3px solid rgba(157,246,255,0.95)";
+    input.style.borderRadius = "14px";
+    input.style.background = "rgba(5,38,64,0.92)";
+    input.style.color = "#ffffff";
+    input.style.font = "900 22px Trebuchet MS, sans-serif";
+    input.style.textAlign = "center";
+    input.style.outline = "none";
+    input.style.boxShadow = "0 8px 24px rgba(0,0,0,0.28)";
+    input.addEventListener("input", () => {
+      input.value = filterPlayerNameInput(input.value);
+    });
+    document.body.appendChild(input);
+    this.nameInput = input;
+    input.focus();
+    input.select();
+  }
+
+  destroyNameInput() {
+    if (!this.nameInput) {
+      return;
+    }
+
+    this.nameInput.remove();
+    this.nameInput = null;
   }
 
   togglePause() {
@@ -1543,25 +1671,30 @@ class GameScene extends Phaser.Scene {
   showPauseOverlay() {
     this.resetTouchDrift();
     this.destroyPauseOverlay();
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, 0.56);
-    shade.setDepth(40);
-
-    const card = this.add.graphics();
-    card.setDepth(41);
-    card.fillStyle(0x0a3a5d, 0.94);
-    card.fillRoundedRect(398, 174, 484, 348, 24);
-    card.lineStyle(4, 0x69e8ff, 0.55);
-    card.strokeRoundedRect(398, 174, 484, 348, 24);
-
-    const title = this.add.text(GAME_WIDTH / 2, 254, "PAUSE", titleStyle(64, "#ffd43f")).setOrigin(0.5).setDepth(42);
-    const resume = makeButton(this, GAME_WIDTH / 2, 348, "WEITER");
+    const shade = makeScreenShade(this, 0.54, 40);
+    const card = makeGlassPanel(this, 396, 130, 488, 470, 41);
+    const icon = this.add.image(GAME_WIDTH / 2, 194, "uiPause").setScale(0.14).setDepth(42);
+    const title = this.add.text(GAME_WIDTH / 2, 270, "PAUSE", titleStyle(58, "#ffd43f")).setOrigin(0.5).setDepth(42);
+    const stats = this.add
+      .text(
+        GAME_WIDTH / 2,
+        322,
+        `${Math.floor(this.score).toLocaleString("de-DE")} Punkte   ${this.pearls.toLocaleString("de-DE")} Perlen`,
+        hudTextStyle(24, "#9df6ff"),
+      )
+      .setOrigin(0.5)
+      .setDepth(42);
+    const resume = makeButton(this, GAME_WIDTH / 2, 388, "WEITER");
     resume.setDepth(43);
     resume.on("pointerdown", () => this.resumeGame());
-    const exit = makeButton(this, GAME_WIDTH / 2, 438, "BEENDEN");
+    const restart = makeButton(this, GAME_WIDTH / 2, 468, "NEUSTART");
+    restart.setDepth(43);
+    restart.on("pointerdown", () => this.scene.restart());
+    const exit = makeButton(this, GAME_WIDTH / 2, 548, "BEENDEN");
     exit.setDepth(43);
     exit.on("pointerdown", () => this.exitToMenu());
 
-    this.pauseOverlay = [shade, card, title, resume, exit];
+    this.pauseOverlay = [shade, card, icon, title, stats, resume, restart, exit];
   }
 
   resumeGame() {
@@ -1738,7 +1871,7 @@ class GameScene extends Phaser.Scene {
     this.lifeBubbles.forEach((bubble, index) => {
       const alive = index < this.lives;
       bubble.setAlpha(alive ? 0.86 : 0.2);
-      bubble.setScale(alive ? 1 : 0.78);
+      bubble.setScale(alive ? (index < this.shieldCharges ? 0.076 : 0.068) : 0.052);
       setHeartIconColor(bubble, index < this.shieldCharges ? 0x9df6ff : 0xff3f76);
     });
     this.updatePowerHud();
@@ -2489,6 +2622,21 @@ function addWaterGlints(scene, depth) {
   }
 }
 
+function makeGlassPanel(scene, x, y, width, height, depth = 2) {
+  const texture = width >= height ? "uiPanelLarge" : "uiPanelSmall";
+  const panel = scene.add.image(x + width / 2, y + height / 2, texture);
+  panel.setDepth(depth);
+  panel.setDisplaySize(width, height);
+  panel.setAlpha(0.92);
+  return panel;
+}
+
+function makeScreenShade(scene, alpha = 0.32, depth = 1) {
+  const shade = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x031827, alpha);
+  shade.setDepth(depth);
+  return shade;
+}
+
 function makeHudPill(scene, x, y, width, iconKey, iconScale, color) {
   const container = scene.add.container(x, y).setDepth(20);
   const bg = scene.add.graphics();
@@ -2513,40 +2661,13 @@ function makeLifePill(scene, x, y) {
   bg.strokeRoundedRect(0, 0, 136, 56, 22);
 
   const shine = scene.add.rectangle(18, 9, 100, 12, 0xffffff, 0.16).setOrigin(0, 0.5);
-  const hearts = [0, 1, 2].map((index) => makeHeartIcon(scene, 32 + index * 34, 28, 0xff3f76));
+  const hearts = [0, 1, 2].map((index) => scene.add.image(32 + index * 34, 28, "uiHeart").setScale(0.068));
   container.add([bg, shine, ...hearts]);
   return { container, hearts };
 }
 
-function makeHeartIcon(scene, x, y, color) {
-  const heart = scene.add.graphics();
-  heart.x = x;
-  heart.y = y;
-  heart.setData("heartColor", color);
-  drawHeartIcon(heart, color);
-  return heart;
-}
-
 function setHeartIconColor(heart, color) {
-  if (heart.getData("heartColor") === color) {
-    return;
-  }
-
-  heart.setData("heartColor", color);
-  drawHeartIcon(heart, color);
-}
-
-function drawHeartIcon(graphic, color) {
-  graphic.clear();
-  graphic.fillStyle(0xffffff, 0.78);
-  graphic.fillCircle(-8, -7, 13);
-  graphic.fillCircle(8, -7, 13);
-  graphic.fillTriangle(-24, -3, 24, -3, 0, 23);
-
-  graphic.fillStyle(color, 1);
-  graphic.fillCircle(-8, -7, 10);
-  graphic.fillCircle(8, -7, 10);
-  graphic.fillTriangle(-20, -2, 20, -2, 0, 19);
+  heart.setTint(color);
 }
 
 function makeSpecialSlot(scene, x, y, iconKey, label, color) {
@@ -2593,16 +2714,8 @@ function hexColorToNumber(color) {
 
 function makePauseIconButton(scene, x, y) {
   const container = scene.add.container(x, y);
-  const bg = scene.add.graphics();
-  bg.fillStyle(0x2f8ed8, 0.95);
-  bg.fillRoundedRect(-34, -34, 68, 68, 18);
-  bg.lineStyle(4, 0xffffff, 0.66);
-  bg.strokeRoundedRect(-34, -34, 68, 68, 18);
-  const leftBar = scene.add.rectangle(-9, 0, 9, 34, 0xffffff, 0.96);
-  const rightBar = scene.add.rectangle(10, 0, 9, 34, 0xffffff, 0.96);
-  leftBar.setStrokeStyle(2, 0x123044, 0.32);
-  rightBar.setStrokeStyle(2, 0x123044, 0.32);
-  container.add([bg, leftBar, rightBar]);
+  const icon = scene.add.image(0, 0, "uiPause").setScale(0.105);
+  container.add([icon]);
   container.setSize(68, 68);
   container.setInteractive(new Phaser.Geom.Rectangle(-34, -34, 68, 68), Phaser.Geom.Rectangle.Contains);
   container.input.cursor = "pointer";
@@ -2614,11 +2727,8 @@ function makeButton(scene, x, y, label) {
   const container = scene.add.container(x, y);
   const width = Math.max(236, label.length * 19);
   const halfWidth = width / 2;
-  const bg = scene.add.graphics();
-  bg.fillStyle(0xffc51f, 1);
-  bg.fillRoundedRect(-halfWidth, -34, width, 68, 18);
-  bg.lineStyle(4, 0xffffff, 0.42);
-  bg.strokeRoundedRect(-halfWidth, -34, width, 68, 18);
+  const bg = scene.add.image(0, 0, getButtonTexture(label));
+  bg.setDisplaySize(width, 68);
 
   const text = scene.add.text(0, 1, label, {
     fontFamily: "Trebuchet MS",
@@ -2636,6 +2746,18 @@ function makeButton(scene, x, y, label) {
   container.on("pointerover", () => container.setScale(1.04));
   container.on("pointerout", () => container.setScale(1));
   return container;
+}
+
+function getButtonTexture(label) {
+  if (label === "BEENDEN" || label === "MENUE" || label === "MENÜ") {
+    return "uiButtonDanger";
+  }
+
+  if (label === "HIGHSCORE" || label === "ZURUECK" || label === "ZURÜCK") {
+    return "uiButtonSecondary";
+  }
+
+  return "uiButtonPrimary";
 }
 
 function isWithinButton(pointer, x, y, label) {
@@ -2750,12 +2872,41 @@ function writeStats(stats) {
   }
 }
 
+function readPlayerName() {
+  try {
+    return sanitizePlayerName(localStorage.getItem(PLAYER_NAME_KEY));
+  } catch {
+    return DEFAULT_PLAYER_NAME;
+  }
+}
+
+function writePlayerName(name) {
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, sanitizePlayerName(name));
+  } catch {
+    // Player names are optional; scores still work with the default name.
+  }
+}
+
+function sanitizePlayerName(name) {
+  const clean = filterPlayerNameInput(name).trim();
+  return clean || DEFAULT_PLAYER_NAME;
+}
+
+function filterPlayerNameInput(name) {
+  return String(name || "")
+    .replace(/[^A-Za-z0-9 _äöüÄÖÜß-]/g, "")
+    .slice(0, 12);
+}
+
 function normalizeStats(raw) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const games = Math.max(0, Math.floor(Number(source.games) || 0));
   let scores = Array.isArray(source.scores)
     ? source.scores
-        .map((entry) => ({
+        .map((entry, index) => ({
+          id: typeof entry?.id === "string" ? entry.id : typeof entry?.date === "string" ? entry.date : `legacy-${index}`,
+          name: sanitizePlayerName(entry?.name || FALLBACK_NAMES[index % FALLBACK_NAMES.length]),
           score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
           pearls: Math.max(0, Math.floor(Number(entry?.pearls) || 0)),
           date: typeof entry?.date === "string" ? entry.date : "",
@@ -2766,7 +2917,7 @@ function normalizeStats(raw) {
     : [];
   const storedHighscore = Math.max(0, Math.floor(Number(source.highscore) || 0));
   if (scores.length === 0 && storedHighscore > 0) {
-    scores = [{ score: storedHighscore, pearls: 0, date: "" }];
+    scores = [{ id: "legacy-highscore", name: FALLBACK_NAMES[0], score: storedHighscore, pearls: 0, date: "" }];
   }
   return {
     highscore: Math.max(storedHighscore, scores[0]?.score ?? 0),
