@@ -935,7 +935,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (isWithinButton(pointer, 640, buttonY, "HIGHSCORE", 196)) {
+    if (isWithinButton(pointer, 640, buttonY, isTopFive ? "BESTÄTIGEN" : "HIGHSCORE", isTopFive ? 224 : 196)) {
       this.savePendingGameOverName();
       this.destroyNameInput();
       this.scene.start("HighscoreScene");
@@ -2026,9 +2026,10 @@ class GameScene extends Phaser.Scene {
     const titleColor = isNewHighscore ? "#ffd43f" : "#ff70ad";
     const titleSize = isNewHighscore ? 44 : 50;
     this.add.text(GAME_WIDTH / 2, 152, title, titleStyle(titleSize, titleColor)).setOrigin(0.5).setDepth(32);
+    // PUNKTE box: number + label centered as a group in the box.
     makeScoreBox(this, resultBoxX, 218, resultBoxWidth, 118, "", "", "#ffffff", 32);
     const scoreText = this.add
-      .text(resultColumnX, 256, `${finalScore.toLocaleString("de-DE")}`, titleStyle(62, "#ffffff"))
+      .text(resultColumnX, 268, `${finalScore.toLocaleString("de-DE")}`, titleStyle(60, "#ffffff"))
       .setOrigin(0.5)
       .setDepth(32)
       .setScale(0.78);
@@ -2038,11 +2039,15 @@ class GameScene extends Phaser.Scene {
       duration: 260,
       ease: "Back.out",
     });
-    this.add.text(resultColumnX, 306, "PUNKTE", hudTextStyle(19, "#ffffff")).setOrigin(0.5).setDepth(33);
+    this.add.text(resultColumnX, 312, "PUNKTE", hudTextStyle(19, "#ffffff")).setOrigin(0.5).setDepth(33);
+    // PERLEN box: pearl icon + number centered as one unit, label below.
     makeScoreBox(this, resultBoxX, 358, resultBoxWidth, 78, "", "", "#ff70ad", 32);
-    this.add.image(resultColumnX - 50, 397, "pearlPink").setScale(0.25).setDepth(33);
-    this.add.text(resultColumnX + 34, 392, this.pearls.toLocaleString("de-DE"), titleStyle(32, "#ffffff")).setOrigin(0.5).setDepth(33);
-    this.add.text(resultColumnX + 34, 420, "PERLEN", hudTextStyle(15, "#ffffff")).setOrigin(0.5).setDepth(33);
+    const pearlNum = this.add.text(0, 386, this.pearls.toLocaleString("de-DE"), titleStyle(34, "#ffffff")).setOrigin(0.5).setDepth(33);
+    const pearlIcon = this.add.image(0, 386, "pearlPink").setScale(0.24).setDepth(33);
+    const pearlGroupW = pearlIcon.displayWidth + 12 + pearlNum.width;
+    pearlIcon.setX(resultColumnX - pearlGroupW / 2 + pearlIcon.displayWidth / 2);
+    pearlNum.setX(pearlIcon.x + pearlIcon.displayWidth / 2 + 12 + pearlNum.width / 2);
+    this.add.text(resultColumnX, 418, "PERLEN", hudTextStyle(15, "#ffffff")).setOrigin(0.5).setDepth(33);
     if (!isTopFive) {
       this.add
         .text(GAME_WIDTH / 2, 474, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
@@ -2079,6 +2084,15 @@ class GameScene extends Phaser.Scene {
       nameLabel = this.add.text(resultColumnX, 460, "BESTENLISTE NAME", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
       this.add.image(resultColumnX, 498, "uiInputName").setDisplaySize(resultBoxWidth, 42).setDepth(32);
       this.createNameInput(readPlayerName(), resultBoxX, 482, resultBoxWidth, 32);
+      // Enter confirms the name and jumps to the leaderboard.
+      this.nameInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.savePendingGameOverName();
+          this.destroyNameInput();
+          this.scene.start("HighscoreScene");
+        }
+      });
     }
 
     if (isNewHighscore) {
@@ -2106,7 +2120,11 @@ class GameScene extends Phaser.Scene {
       this.scene.restart();
     });
 
-    const highscore = makeButton(this, 640, buttonY, "HIGHSCORE", 196, { icon: false, fontSize: 23 });
+    // When the player is entering a top-5 name, the middle button confirms the
+    // name and jumps to the leaderboard; otherwise it just opens the leaderboard.
+    const midLabel = isTopFive ? "BESTÄTIGEN" : "HIGHSCORE";
+    const midWidth = isTopFive ? 224 : 196;
+    const highscore = makeButton(this, 640, buttonY, midLabel, midWidth, { icon: false, fontSize: 23 });
     highscore.setDepth(32);
     highscore.on("pointerdown", () => {
       this.savePendingGameOverName();
@@ -2271,11 +2289,11 @@ class GameScene extends Phaser.Scene {
     this.destroyPauseOverlay();
     const shade = makeScreenShade(this, 0.56, 40);
     const card = makeGlassPanel(this, 360, 96, 560, 474, 41, 0x0878ca);
-    const title = this.add.text(GAME_WIDTH / 2, 190, "PAUSE", titleStyle(64, "#ffffff")).setOrigin(0.5).setDepth(42);
+    const title = this.add.text(GAME_WIDTH / 2, 178, "PAUSE", titleStyle(64, "#ffffff")).setOrigin(0.5).setDepth(42);
     const stats = this.add
       .text(
         GAME_WIDTH / 2,
-        248,
+        232,
         `${Math.floor(this.score).toLocaleString("de-DE")} Punkte   ${this.pearls.toLocaleString("de-DE")} Perlen`,
         hudTextStyle(20, "#9df6ff"),
       )
@@ -3287,12 +3305,12 @@ function makeGlassPanel(scene, x, y, width, height, depth = 2, fillColor = 0x087
   // Gentle outer glow.
   panel.fillStyle(0x9df6ff, 0.16);
   panel.fillRoundedRect(x - 5, y - 5, width + 10, height + 10, 34);
-  // Single clean fill.
+  // Single clean fill (no headline band — flat and calm).
   panel.fillStyle(fillColor, 0.96);
   panel.fillRoundedRect(x, y, width, height, 30);
-  // One subtle top gloss (capped so it stays a sheen, not a band).
-  panel.fillStyle(0xffffff, 0.1);
-  panel.fillRoundedRect(x + 18, y + 16, width - 36, Math.min(height * 0.26, 110), 22);
+  // Thin top sheen at the very edge for a touch of depth (not a box).
+  panel.fillStyle(0xffffff, 0.08);
+  panel.fillRoundedRect(x + 16, y + 10, width - 32, 14, 7);
   // One border.
   panel.lineStyle(6, 0xffffff, 0.9);
   panel.strokeRoundedRect(x, y, width, height, 30);
