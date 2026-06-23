@@ -2066,7 +2066,7 @@ class GameScene extends Phaser.Scene {
         449,
         512,
         `ZEIT ${timeLabel}    ·    BESTE COMBO x${this.longestCombo}    ·    GEGNER ${overcome}`,
-        hudTextStyle(16, "#9df6ff"),
+        hudTextStyle(19, "#eaffff"),
       )
       .setOrigin(0.5)
       .setDepth(33);
@@ -3330,10 +3330,9 @@ function makeWinnerCard(scene, x, y, width, height, entry) {
   graphic.fillRoundedRect(x, y, width, height, 22);
   graphic.lineStyle(5, 0xffffff, 0.78);
   graphic.strokeRoundedRect(x, y, width, height, 22);
-  scene.add.image(x + 72, y + 58, "uiTrophy").setScale(0.115).setDepth(4);
-  scene.add.image(x + width / 2, y + 94, "duckVictory").setScale(0.13).setDepth(4);
-  addFittedText(scene, x + width / 2, y + 172, sanitizePlayerName(entry.name), hudTextStyle(30, "#ffffff"), width - 62, { originX: 0.5, depth: 4 });
-  addFittedText(scene, x + width / 2, y + 226, entry.score.toLocaleString("de-DE"), titleStyle(48, "#123044"), width - 58, { originX: 0.5, depth: 4 });
+  scene.add.image(x + width / 2, y + 104, "duckVictory").setScale(0.22).setDepth(4);
+  addFittedText(scene, x + width / 2, y + 182, sanitizePlayerName(entry.name), hudTextStyle(30, "#ffffff"), width - 62, { originX: 0.5, depth: 4 });
+  addFittedText(scene, x + width / 2, y + 232, entry.score.toLocaleString("de-DE"), titleStyle(48, "#123044"), width - 58, { originX: 0.5, depth: 4 });
   return graphic;
 }
 
@@ -3470,30 +3469,49 @@ function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   const iconKey = options.icon === false ? null : getButtonIcon(label);
   const heroButton = label === "SPIELEN" || label === "BESTENLISTE";
   const minWidth = label === "BESTENLISTE" ? 312 : label === "SPIELEN" ? 292 : 190;
-  const width = minWidthOverride ?? Math.max(minWidth, label.length * 17 + (iconKey ? 78 : 38));
-  const largeButton = heroButton || width >= 300;
-  const height = largeButton ? 76 : 64;
+  const largeButton = heroButton || (minWidthOverride ?? 0) >= 300;
+  const fontPx = options.fontSize ? options.fontSize : largeButton ? (label.length > 10 ? 26 : 30) : label.length > 10 ? 20 : 23;
+  const height = largeButton ? 74 : 62;
+  const iconGap = iconKey ? (largeButton ? 50 : 42) : 0;
+  // Width derived from the actual text width so the label always fits the pill.
+  const estTextW = label.length * fontPx * 0.6;
+  const width = minWidthOverride ?? Math.max(minWidth, Math.ceil(estTextW + iconGap + 64));
   const halfWidth = width / 2;
   const halfHeight = height / 2;
+  const radius = halfHeight;
   const colors = getButtonColors(label);
-  const cropWidth = 664;
-  const cropHeight = 252;
-  const bg = scene.add.image(0, 0, getButtonAssetKey(label));
-  bg.setCrop(28, 54, cropWidth, cropHeight);
-  bg.setScale(width / cropWidth, height / cropHeight);
 
-  const icon = iconKey ? scene.add.image(-halfWidth + (largeButton ? 56 : 46), 0, iconKey).setScale(largeButton ? 0.074 : 0.062) : null;
-  const textX = iconKey ? (largeButton ? 28 : 22) : 0;
-  const text = scene.add.text(textX, 0, label, {
-    fontFamily: "Trebuchet MS",
-    fontSize: options.fontSize ? `${options.fontSize}px` : largeButton ? (label.length > 10 ? "28px" : "32px") : label.length > 10 ? "21px" : "24px",
-    fontStyle: "900",
-    color: "#ffffff",
-    stroke: colors.textStroke,
-    strokeThickness: 4,
-  });
-  text.setOrigin(0.5);
-  container.add(icon ? [bg, icon, text] : [bg, text]);
+  // Crisp pill drawn with graphics — no image stretching, so it never distorts.
+  const g = scene.add.graphics();
+  g.fillStyle(0x06243d, 0.26);
+  g.fillRoundedRect(-halfWidth, -halfHeight + 5, width, height, radius);
+  g.fillStyle(colors.fill, 1);
+  g.fillRoundedRect(-halfWidth, -halfHeight, width, height, radius);
+  g.fillStyle(0xffffff, 0.22);
+  g.fillRoundedRect(-halfWidth + 6, -halfHeight + 5, width - 12, height * 0.4, radius);
+  g.lineStyle(3, colors.stroke, 0.95);
+  g.strokeRoundedRect(-halfWidth, -halfHeight, width, height, radius);
+
+  // Lay out icon + text as a centered group.
+  const icon = iconKey ? scene.add.image(0, 0, iconKey).setScale(largeButton ? 0.07 : 0.058) : null;
+  const text = scene.add
+    .text(0, 0, label, {
+      fontFamily: "Trebuchet MS",
+      fontSize: `${fontPx}px`,
+      fontStyle: "900",
+      color: "#ffffff",
+      stroke: colors.textStroke,
+      strokeThickness: 4,
+    })
+    .setOrigin(0.5);
+  if (icon) {
+    const iconW = icon.displayWidth;
+    const groupW = iconW + 12 + text.width;
+    icon.setX(-groupW / 2 + iconW / 2);
+    text.setX(icon.x + iconW / 2 + 12 + text.width / 2);
+  }
+
+  container.add(icon ? [g, icon, text] : [g, text]);
   container.setSize(width, height);
   container.setInteractive(new Phaser.Geom.Rectangle(-halfWidth, -halfHeight, width, height), Phaser.Geom.Rectangle.Contains);
   container.input.cursor = "pointer";
