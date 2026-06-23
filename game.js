@@ -2679,27 +2679,31 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
+      // Resolve a HIT only at near-contact, not when the obstacle first enters
+      // the window. Clearing/passing can happen anywhere in the window, so the
+      // player has until the obstacle actually reaches the duck to jump/dive.
+      const hitX = this.duck.x + 34;
       const mode = obstacle.getData("mode");
       if (mode === "jump") {
         if (this.hasClearedJumpObstacle(obstacle)) {
           this.scoreJumpObstacle(obstacle);
           return;
         }
-
+        if (obstacle.x > hitX) {
+          return;
+        }
         this.handleHit(this.duck, obstacle);
         return;
       }
 
       if (mode === "dive") {
-        if (obstacle.x > this.duck.x + 26) {
-          return;
-        }
-
         if (this.isDiving) {
           this.passUnderObstacle(obstacle);
           return;
         }
-
+        if (obstacle.x > hitX) {
+          return;
+        }
         this.handleHit(this.duck, obstacle);
         return;
       }
@@ -2713,17 +2717,24 @@ class GameScene extends Phaser.Scene {
         if (this.isPreparingStomp(obstacle)) {
           return;
         }
-
+        if (obstacle.x > hitX) {
+          return;
+        }
         this.handleHit(this.duck, obstacle);
         return;
       }
 
       if (mode === "underwater") {
         if (this.isDiving) {
+          if (obstacle.x > hitX) {
+            return;
+          }
           this.handleHit(this.duck, obstacle);
           return;
         }
-
+        if (obstacle.x > this.duck.x + 26) {
+          return;
+        }
         obstacle.setData("passed", true);
         this.recordChallengeOutcome(obstacle, "cleared");
         this.addCombo(1, "OBEN VORBEI!", obstacle.x, obstacle.y - 118, "#ff70ad");
@@ -2742,7 +2753,11 @@ class GameScene extends Phaser.Scene {
   hasClearedJumpObstacle(obstacle) {
     const duckBottom = this.duck.body.y + this.duck.body.height;
     const obstacleTop = obstacle.body.y;
-    return !this.isDiving && !this.duck.body.blocked.down && duckBottom < obstacleTop + 28;
+    // Generous clearance scaled to obstacle height: the collision body can sit
+    // a little above the visible art, so requiring the duck below the very top
+    // made tall obstacles (soap stack) need an unrealistically high jump.
+    const clearance = Math.max(28, obstacle.body.height * 0.5);
+    return !this.isDiving && !this.duck.body.blocked.down && duckBottom < obstacleTop + clearance;
   }
 
   stompObstacle(obstacle) {
