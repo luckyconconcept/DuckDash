@@ -2767,10 +2767,6 @@ class GameScene extends Phaser.Scene {
 
   pullNearbyCollectibles() {
     const magnetActive = this.isMagnetActive();
-    const attractDistance = magnetActive ? 315 : 24;
-    const attractStrength = magnetActive ? 0.062 : 0;
-    const collectDistance = magnetActive ? 112 : 20;
-    const lateCatchDistance = magnetActive ? 138 : 20;
 
     this.collectibles.getChildren().forEach((pearl) => {
       if (!pearl.active) {
@@ -2778,6 +2774,16 @@ class GameScene extends Phaser.Scene {
       }
 
       const underwater = pearl.getData("underwater");
+      // While diving, scoop nearby underwater reward pearls. The dive depth
+      // leaves the duck ~40-90px above the reward trail, so the default 20px
+      // pickup radius could never reach it — the rewards were uncollectable
+      // without a magnet. The wider radius only applies to underwater pearls
+      // during a dive, so surface pearls are unaffected.
+      const diveScoop = this.isDiving && underwater;
+      const attractDistance = magnetActive ? 315 : diveScoop ? 170 : 24;
+      const attractStrength = magnetActive ? 0.062 : diveScoop ? 0.06 : 0;
+      const collectDistance = magnetActive ? 112 : diveScoop ? 100 : 20;
+      const lateCatchDistance = magnetActive ? 138 : diveScoop ? 120 : 20;
 
       if (pearl.x < this.duck.x - 120) {
         pearl.setActive(false);
