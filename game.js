@@ -1398,7 +1398,7 @@ class GameScene extends Phaser.Scene {
     let pulseTarget;
     if (cueConfig.icon && this.textures.exists(cueConfig.icon)) {
       // Use the round signal badge as the advance-warning cue.
-      const baseScale = 0.06;
+      const baseScale = 0.095;
       const icon = this.add.image(0, 0, cueConfig.icon).setScale(baseScale);
       cue.add(icon);
       pulseTarget = icon;
