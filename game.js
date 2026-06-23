@@ -515,6 +515,7 @@ class GameScene extends Phaser.Scene {
     this.pearls = 0;
     this.lives = 3;
     this.combo = 0;
+    this.longestCombo = 0;
     this.lastComboAt = 0;
     this.lastMilestone = 0;
     this.speed = 300;
@@ -1905,6 +1906,27 @@ class GameScene extends Phaser.Scene {
         .setDepth(32);
     }
 
+    // Run summary in the free band under the duck (above the buttons): turns the
+    // game-over screen into a self-comparison hook that pulls "one more try".
+    const totalSeconds = Math.floor(this.runTime);
+    const timeLabel = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+    const sumBucket = (bucket) => Object.values(bucket || {}).reduce((acc, n) => acc + n, 0);
+    const ch = this.telemetry.challenge;
+    const overcome =
+      sumBucket(ch.clearedByMode) +
+      sumBucket(ch.turboClearedByMode) +
+      sumBucket(ch.bombClearedByMode) +
+      sumBucket(ch.absorbedByMode);
+    this.add
+      .text(
+        449,
+        512,
+        `ZEIT ${timeLabel}    ·    BESTE COMBO x${this.longestCombo}    ·    GEGNER ${overcome}`,
+        hudTextStyle(16, "#9df6ff"),
+      )
+      .setOrigin(0.5)
+      .setDepth(33);
+
     let nameLabel = null;
     if (isTopFive) {
       nameLabel = this.add.text(resultColumnX, 460, "BESTENLISTE NAME", hudTextStyle(18, "#9df6ff")).setOrigin(0.5).setDepth(32);
@@ -2693,6 +2715,7 @@ class GameScene extends Phaser.Scene {
 
   addCombo(amount, message, x, y, color) {
     this.combo = Math.min(24, this.combo + amount);
+    this.longestCombo = Math.max(this.longestCombo, this.combo);
     this.lastComboAt = this.time.now;
     const bonus = Math.min(18, Math.max(0, this.combo - 3));
     this.score += bonus;
