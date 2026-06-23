@@ -1484,8 +1484,7 @@ class GameScene extends Phaser.Scene {
       bubbles.push(bubble);
     }
 
-    const cap = this.add.ellipse(0, -88, 130, 32, 0xeaffff, 0.26);
-    container.add([gate, ...bubbles, cap]);
+    container.add([gate, ...bubbles]);
     obstacle.setData("visual", container);
   }
 
@@ -2563,15 +2562,10 @@ class GameScene extends Phaser.Scene {
   }
 
   showDiveWake() {
+    // Wake/shade/bubble-trail under the duck removed per design — the diving duck
+    // stands on its own.
     this.diveBubbleTrail?.destroy();
-    const trailKey = this.textures.exists("fxDiveLaneTrail") ? "fxDiveLaneTrail" : "fxUnderwaterBubbles";
-    this.diveBubbleTrail = this.add.image(this.duck.x + 16, this.duck.y + 42, trailKey);
-    this.diveBubbleTrail.setScale(trailKey === "fxDiveLaneTrail" ? 0.16 : 0.3);
-    this.diveBubbleTrail.setAlpha(trailKey === "fxDiveLaneTrail" ? 0.54 : 0.58);
-    this.diveBubbleTrail.setDepth(9);
-    if (trailKey === "fxDiveLaneTrail") {
-      this.diveBubbleTrail.setBlendMode(Phaser.BlendModes.SCREEN);
-    }
+    this.diveBubbleTrail = null;
   }
 
   showDiveStatus() {
