@@ -253,6 +253,7 @@ class BootScene extends Phaser.Scene {
     this.load.image("uiPause", "assets/ui_pause.png?v=20260623-crisp1");
     this.load.image("uiHeart", "assets/ui_heart.png?v=20260622-assets-ui1");
     this.load.image("uiTrophy", "assets/ui_trophy.png?v=20260623-crisp1");
+    this.load.image("uiHelp", "assets/help_icon.png?v=20260623-help1");
     this.load.image("duckHero", "assets/duck_hero.png?v=20260622-assets-ui1");
     this.load.image("duckGameOver", "assets/duck_gameover.png?v=20260622-assets-ui1");
     this.load.image("duckVictory", "assets/duck_victory.png?v=20260622-assets-ui1");
@@ -302,6 +303,7 @@ class MenuScene extends Phaser.Scene {
 
   create() {
     this.hasStarted = false;
+    this.helpOpen = false;
     this.stats = readStats();
     this.nativeFallbackReadyAt = performance.now() + 220;
     addBackground(this);
@@ -358,9 +360,24 @@ class MenuScene extends Phaser.Scene {
 
     const highscoreButton = makeButton(this, 970, 636, "BESTENLISTE");
     highscoreButton.setDepth(5);
-    highscoreButton.on("pointerdown", () => this.scene.start("HighscoreScene"));
+    highscoreButton.on("pointerdown", () => {
+      if (!this.helpOpen) {
+        this.scene.start("HighscoreScene");
+      }
+    });
+
+    const helpButton = this.add.image(GAME_WIDTH - 74, 70, "uiHelp").setScale(0.052).setDepth(6).setInteractive({ useHandCursor: true });
+    helpButton.on("pointerover", () => helpButton.setScale(0.057));
+    helpButton.on("pointerout", () => helpButton.setScale(0.052));
+    helpButton.on("pointerdown", () => this.openHelp());
 
     this.input.keyboard.on("keydown", (event) => {
+      if (this.helpOpen) {
+        if (event.code === "Escape") {
+          this.closeHelp();
+        }
+        return;
+      }
       if (event.code === "Space" || event.code === "Enter") {
         this.startGame();
       }
@@ -369,7 +386,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   startGame() {
-    if (this.hasStarted) {
+    if (this.hasStarted || this.helpOpen) {
       return;
     }
 
@@ -380,7 +397,7 @@ class MenuScene extends Phaser.Scene {
 
   installNativeStartFallback() {
     const startFromDom = (event) => {
-      if (performance.now() < this.nativeFallbackReadyAt) {
+      if (performance.now() < this.nativeFallbackReadyAt || this.helpOpen) {
         return;
       }
 
@@ -410,6 +427,159 @@ class MenuScene extends Phaser.Scene {
       this.game.canvas.removeEventListener("touchstart", startFromDom);
       window.removeEventListener("keydown", startFromKey);
     });
+  }
+
+  openHelp() {
+    if (this.helpOpen) {
+      return;
+    }
+    this.helpOpen = true;
+    SoundFX.unlock();
+
+    const px = 210;
+    const py = 64;
+    const pw = 860;
+    const ph = 600;
+    const vpX = px + 36;
+    const vpY = py + 96;
+    const vpW = pw - 72;
+    const vpH = ph - 96 - 96;
+
+    const els = [];
+    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x04253f, 0.62).setDepth(50).setInteractive();
+    shade.on("pointerdown", () => this.closeHelp());
+    els.push(shade, makeGlassPanel(this, px, py, pw, ph, 51, 0x0878ca));
+    // Transparent catcher above the shade so taps inside the panel don't close it.
+    els.push(this.add.rectangle(px + pw / 2, py + ph / 2, pw, ph, 0x000000, 0.001).setDepth(52).setInteractive());
+    els.push(this.add.text(GAME_WIDTH / 2, py + 50, "SO SPIELST DU", titleStyle(40, "#ffffff")).setOrigin(0.5).setDepth(54));
+
+    const content = this.add.container(vpX, vpY).setDepth(53);
+    let cy = 0;
+    const section = (label) => {
+      content.add(this.add.text(vpW / 2, cy + 12, label, titleStyle(23, "#ffd43f")).setOrigin(0.5, 0));
+      cy += 50;
+    };
+    const row = (iconKey, scale, head, desc) => {
+      const ic = this.add.image(34, cy + 28, iconKey).setScale(scale).setOrigin(0.5);
+      const h = this.add.text(82, cy, head, hudTextStyle(20, "#ffffff")).setOrigin(0, 0);
+      const d = this.add
+        .text(82, cy + 28, desc, { fontFamily: "Trebuchet MS", fontSize: "16px", fontStyle: "700", color: "#d7f3ff", stroke: "#0a2840", strokeThickness: 3, wordWrap: { width: vpW - 96 } })
+        .setOrigin(0, 0);
+      content.add([ic, h, d]);
+      cy += Math.max(74, 34 + d.height + 18);
+    };
+    const note = (text) => {
+      const t = this.add
+        .text(0, cy, text, { fontFamily: "Trebuchet MS", fontSize: "17px", fontStyle: "700", color: "#eaffff", stroke: "#0a2840", strokeThickness: 3, wordWrap: { width: vpW } })
+        .setOrigin(0, 0);
+      content.add(t);
+      cy += t.height + 16;
+    };
+
+    section("STEUERUNG");
+    note("Tippen oder ↑ = Springen.   ↓ gedrückt halten = Tauchen (länger = tiefer).   ← / → = zur Seite driften.");
+    section("DIE SIGNALE — erscheinen kurz vor jedem Hindernis");
+    row("uiSignalJump", 0.042, "SPRINGEN", "Spring über das Hindernis.");
+    row("uiSignalDive", 0.042, "TAUCHEN", "Tauch unter dem Hindernis durch.");
+    row("uiSignalStomp", 0.042, "DRAUF", "Fall von oben auf den Gegner.");
+    row("uiSignalStayUp", 0.042, "OBEN BLEIBEN", "Bleib oben — NICHT tauchen, sonst Treffer!");
+    section("POWER-UPS");
+    row("powerupShieldV2", 0.24, "Schild", "Fängt einen Treffer ab.");
+    row("powerupMagnetV2", 0.27, "Magnet", "Zieht Perlen für kurze Zeit an.");
+    row("powerupTurboV2", 0.3, "Turbo", "Kurz unverwundbar und bricht durch alles.");
+    row("quackBombV2", 0.3, "Quak-Bombe", "Räumt nahe Hindernisse weg.");
+    section("SAMMELN");
+    row("pearlGold", 0.54, "Perlen", "Punkte — je nach Farbe mehr wert.");
+    row("shellPearl", 0.29, "Muschel", "Viele Punkte auf einmal.");
+    row("starfishBonus", 0.24, "Seestern", "Dicker Bonus.");
+    section("COMBO, ZIELE & LEBEN");
+    note("Ohne Treffer steigt dein Perlen-Multiplikator (bis x2.5). Erfülle die Ziele oben am Bildschirm für Bonuspunkte.");
+    note("Du hast 3 Herzen. Bei 0 Herzen ist der naechste Treffer das Aus — letzte Chance!");
+
+    const contentHeight = cy;
+    const maskG = this.make.graphics({ add: false });
+    maskG.fillStyle(0xffffff);
+    maskG.fillRect(vpX, vpY, vpW, vpH);
+    content.setMask(maskG.createGeometryMask());
+    els.push(content);
+
+    const closeBtn = makeButton(this, GAME_WIDTH / 2, py + ph - 44, "SCHLIESSEN", 280);
+    closeBtn.setDepth(55);
+    closeBtn.on("pointerdown", () => this.closeHelp());
+    els.push(closeBtn);
+
+    const maxScroll = Math.max(0, contentHeight - vpH);
+    let scrollY = 0;
+    let thumb = null;
+    if (maxScroll > 0) {
+      els.push(this.add.rectangle(px + pw - 22, vpY + vpH / 2, 6, vpH, 0xffffff, 0.12).setDepth(54));
+      const thumbH = Math.max(44, vpH * (vpH / contentHeight));
+      thumb = this.add.rectangle(px + pw - 22, vpY + thumbH / 2, 6, thumbH, 0xffffff, 0.62).setDepth(55);
+      els.push(thumb);
+    }
+    const apply = () => {
+      content.setY(vpY - scrollY);
+      if (thumb) {
+        const t = maxScroll > 0 ? scrollY / maxScroll : 0;
+        thumb.y = vpY + thumb.height / 2 + t * (vpH - thumb.height);
+      }
+    };
+    const scrollBy = (dy) => {
+      scrollY = Phaser.Math.Clamp(scrollY + dy, 0, maxScroll);
+      apply();
+    };
+
+    let dragFrom = null;
+    let dragScroll = 0;
+    const wheelHandler = (pointer, over, dx, dy) => {
+      if (this.helpOpen) {
+        scrollBy(dy * 0.5);
+      }
+    };
+    const downHandler = (p) => {
+      if (this.helpOpen && p.x >= vpX && p.x <= vpX + vpW && p.y >= vpY && p.y <= vpY + vpH) {
+        dragFrom = p.y;
+        dragScroll = scrollY;
+      }
+    };
+    const moveHandler = (p) => {
+      if (dragFrom === null) {
+        return;
+      }
+      scrollY = Phaser.Math.Clamp(dragScroll + (dragFrom - p.y), 0, maxScroll);
+      apply();
+    };
+    const upHandler = () => {
+      dragFrom = null;
+    };
+    this.input.on("wheel", wheelHandler);
+    this.input.on("pointerdown", downHandler);
+    this.input.on("pointermove", moveHandler);
+    this.input.on("pointerup", upHandler);
+
+    this.helpEls = els;
+    this.helpMask = maskG;
+    this.helpHandlers = { wheelHandler, downHandler, moveHandler, upHandler };
+  }
+
+  closeHelp() {
+    if (!this.helpOpen) {
+      return;
+    }
+    this.helpOpen = false;
+    if (this.helpHandlers) {
+      this.input.off("wheel", this.helpHandlers.wheelHandler);
+      this.input.off("pointerdown", this.helpHandlers.downHandler);
+      this.input.off("pointermove", this.helpHandlers.moveHandler);
+      this.input.off("pointerup", this.helpHandlers.upHandler);
+      this.helpHandlers = null;
+    }
+    (this.helpEls || []).forEach((el) => el.destroy());
+    this.helpEls = null;
+    if (this.helpMask) {
+      this.helpMask.destroy();
+      this.helpMask = null;
+    }
   }
 
   isStartPointer(event) {
