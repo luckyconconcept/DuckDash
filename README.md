@@ -1,104 +1,123 @@
-# 🏆 SKAILE Academy Building Challenge
+# 🦆 Duck & Dash
 
-Willkommen zur Building Challenge. Hier startest du deinen Build. Eine Aufgabe, echtes Preisgeld, fairer Start für alle.
+Ein schnelles 2D-Browser-Minispiel: Eine Gummiente flitzt durch ein überflutetes
+Badezimmer, weicht Hindernissen aus, sammelt Perlen und nutzt Power-ups. Gebaut
+mit **Phaser 3** als reine statische Web-App – kein Build-Schritt, kein Backend.
 
-## So läuft die Challenge
+„Spring. Tauch. Sammle Perlen."
 
-- **Start:** Samstag, 12:00 Uhr. Dann droppe ich das konkrete Thema in der Community. Vorher kennt es keiner.
-- **Ende:** Dienstag, 18:00 Uhr. Bis dahin muss dein Build abgegeben sein.
-- **Solo:** Du baust allein.
-- **Preisgeld:** 🥇 250 € · 🥈 150 € · 🥉 100 €
+---
 
-## Bevor du loslegst: GitHub verbinden
+## Spielidee & Steuerung
 
-Damit Claude Code deinen Fortschritt hochladen kann, muss dein Rechner einmal mit GitHub verbunden sein. Das machst du nur ein einziges Mal:
+Die Ente läuft automatisch nach vorn. Du reagierst auf die **Signale**, die kurz
+vor jedem Hindernis erscheinen:
 
-1. **GitHub-Account anlegen** (falls noch nicht vorhanden), kostenlos auf [github.com](https://github.com).
-2. **Auf deinem Rechner anmelden.** Am einfachsten über die GitHub CLI: installier sie von [cli.github.com](https://cli.github.com) und führ dann im Terminal `gh auth login` aus. Folg einfach den Schritten, der Login läuft über deinen Browser.
+| Signal | Aktion | Steuerung |
+|--------|--------|-----------|
+| **SPRINGEN** | über das Hindernis | Leertaste / ↑ / Tippen |
+| **TAUCHEN** | unter dem Hindernis durch | ↓ gedrückt halten (länger = tiefer) / Swipe nach unten |
+| **DRAUF** | von oben auf den Gegner fallen | rechtzeitig springen und drauffallen |
+| **OBEN BLEIBEN** | **nicht** tauchen, sonst Treffer! | nichts tun / oben bleiben |
+| seitlich ausweichen | Bonus-Punkte beim Sammeln | ← / → / Swipe seitlich |
 
-Danach dürfen git und Claude Code für dich pushen und du kannst loslegen.
+**Power-ups:** Schild (fängt einen Treffer ab), Magnet (zieht Perlen an), Turbo
+(kurz unverwundbar, bricht durch alles), Quak-Bombe (räumt nahe Hindernisse weg).
 
-## So machst du mit (Schritt für Schritt)
+**Sammeln:** Perlen (je nach Farbe mehr Punkte), Muschel, Seestern. Wer ohne
+Treffer sammelt, steigert seinen **Perlen-Multiplikator** (bis ×2.5).
 
-1. **Warte auf das Thema.** Erst wenn ich Samstag um 12:00 das Thema gepostet habe, geht es los. Vorher anfangen ist nicht erlaubt.
-2. **Erstelle dein eigenes Repo.** Klick oben auf **"Use this template" → "Create a new repository"** und lass es **öffentlich (public)**. Damit bekommst du deine eigene, frische Kopie.
-3. **Hol dir die Kopie auf deinen Rechner.** Auf deinem neuen Repo den grünen **Code**-Button klicken, die HTTPS-URL kopieren, dann im Terminal:
-   ```bash
-   git clone <deine-repo-url>
-   cd <dein-repo-name>
-   ```
-4. **Starte Claude Code** in diesem Ordner und gib ihm einmal den Setup-Prompt (siehe unten). Damit pusht Claude deinen Fortschritt ab jetzt automatisch in dein Repo.
-5. **Bau dein Minigame.**
-6. **Mach dein Game spielbar.** Deploy es kostenlos über GitHub Pages, Netlify oder Vercel, damit man es direkt im Browser spielen kann.
-7. **Gib ab.** Poste bis Dienstag 18:00 im Abgabe-Thread in der Community zwei Links: den Link zu deinem Repo und den Link zum spielbaren Game.
+**Ziele (Missionen):** Rotierende Mini-Ziele oben am Bildschirm geben Bonuspunkte.
 
-## Verbinde deinen Claude Code (Setup-Prompt)
+**Leben:** 3 Herzen. Bei 0 Herzen ist der **nächste** Treffer das Aus – letzte Chance.
 
-Gib diesen Prompt einmal in deine Claude Code Session in deinem Projektordner. Danach pusht Claude deinen Fortschritt automatisch in dein eigenes Repo, auch in jeder neuen Session:
+Auf der Startseite erklärt ein **„?"-Button** alle Icons und Regeln im Detail.
 
-```text
-Ich nehme an einer Coding-Challenge teil und baue hier ein Minigame. Bevor du loslegst, richte einmal die GitHub-Anbindung ein und halte dich ab dann strikt daran:
+---
 
-1. Push-Ziel prüfen. Schau mit `git remote -v`, wohin "origin" zeigt. Es MUSS mein eigenes Repo sein, also meine eigene Kopie mit MEINEM GitHub-Namen in der URL. Falls origin fehlt oder noch auf das Original-Template "sebaskauf/building-challenge-starter" zeigt, frag mich nach der URL meines eigenen Repos und setz sie als origin. Pushe niemals woanders hin.
+## Lokal starten
 
-2. Verbindung testen. Mach jetzt einen kleinen Test-Commit ("chore: setup push") und pushe ihn zu origin. Sag mir, ob er durchgegangen ist. Wird der Push abgelehnt, zeigt origin aufs falsche Repo, dann zurück zu Schritt 1.
+Es ist eine statische Seite – einfach einen kleinen Webserver im Projektordner
+starten (Doppelklick auf `index.html` reicht wegen Browser-Sicherheitsregeln
+für Assets oft nicht):
 
-3. Leg eine projektbezogene CLAUDE.md direkt in diesem Projektordner an (also die CLAUDE.md hier im Projekt, NICHT die globale ~/.claude/CLAUDE.md) mit diesen Regeln, damit jede zukünftige Session in diesem Projekt sie automatisch befolgt:
-   - Nach jedem abgeschlossenen Arbeitsschritt sofort committen und zu origin pushen (git add -A, kurze klare Message, git push). Sehr regelmäßig, immer dann wenn wieder ein Stück fertig ist. Kein Timer, sondern an den Fortschritt gekoppelt.
-   - Immer nur zu origin (meinem eigenen Repo) pushen, das Ziel nie ändern.
-   - Zu Beginn jeder neuen Session zuerst git log und git status anschauen, kurz orientieren, dann nahtlos weiterbauen, weiterhin mit Push nach jedem Schritt.
-
-Ziel: mein kompletter Fortschritt landet fortlaufend und nachvollziehbar in meinem eigenen Repo.
+```bash
+cd "building-challenge-starter"
+python3 -m http.server 8000
 ```
 
-## Am Ende: Dein Game auf Vercel deployen (Prompt)
+Dann im Browser **http://localhost:8000** öffnen (Fenster quer/breit ziehen).
+Alternativ `npx serve` o. ä.
 
-Wenn dein Minigame fertig ist, gib deiner Claude Code Session diesen Prompt, um es sauber auf Vercel zu deployen. Er stellt sicher, dass wirklich alles committet und vollständig ist und dass die Live-Version genauso läuft wie bei dir lokal:
+---
 
-```text
-Mein Minigame ist fertig und ich will es jetzt sauber auf Vercel deployen. Geh gründlich und Schritt für Schritt vor und melde erst "fertig", wenn die Live-Version nachweislich genauso läuft wie lokal. Halte dich genau an diese Reihenfolge:
+## Hosten / Deployen
 
-1. Alles sichern. Führ `git status` aus, committe und pushe alle offenen Änderungen zu origin. Prüf danach, dass `git status` sauber ist (nichts uncommitted) und dass nichts mehr ungepusht ist (`git log origin/main..HEAD` muss leer sein). Das Repo muss exakt meinem lokalen Stand entsprechen.
+Das Spiel besteht nur aus statischen Dateien und läuft auf **jedem** Webspace
+(All-Inkl, GitHub Pages, Netlify, Vercel …). Lade den **Inhalt** dieses Ordners
+ins Web-Root:
 
-2. Vollständigkeit prüfen. Geh das Projekt durch und stell sicher, dass wirklich ALLE Dateien, die das Spiel braucht, im Repo liegen: index.html, alle Skripte, Styles, Bilder, Sounds und sonstige Assets. Achte besonders darauf, dass nichts nur lokal existiert oder aus Versehen in .gitignore steht, und dass keine Datei auf etwas verweist, das nicht eingecheckt ist.
-
-3. Lokal als Referenz testen. Starte das Spiel lokal über einen lokalen Server und bestätige, dass es fehlerfrei läuft. Das ist deine Vergleichsbasis.
-
-4. Stolperfallen checken, die lokal gehen aber live brechen:
-   - Groß- und Kleinschreibung in Dateipfaden. Lokal ist das egal, auf Vercel (Linux) nicht. Ein Verweis auf "Game.js" bei einer Datei "game.js" bricht live. Gleich alle Pfade ab.
-   - Relative Pfade für Assets verwenden (z.B. ./bild.png), keine hartkodierten lokalen Pfade.
-
-5. Auf Vercel deployen. Deploy das aktuelle Projekt auf Vercel, am einfachsten über den Vercel-MCP. Falls der nicht eingerichtet ist, nutz die Vercel CLI (`npx vercel`) und führ mich durch den Login. Deploy als statische Seite.
-
-6. Live verifizieren. Öffne die Live-URL und prüf wirklich, ob das Spiel dort genauso lädt und funktioniert wie lokal. Schau in die Browser-Konsole auf Fehler (z.B. 404 auf Assets). Wenn etwas nicht stimmt: Ursache finden, beheben, committen, pushen, neu deployen und erneut prüfen. Wiederhol das, bis die Live-Version einwandfrei und identisch zu lokal läuft.
-
-7. Bericht. Gib mir am Ende die Live-URL und bestätige ausdrücklich: alles ist committet und gepusht, alle Dateien vollständig, und das Spiel läuft live genauso wie lokal.
-
-Melde nichts als fertig, solange die Live-URL nicht nachweislich einwandfrei läuft.
+```
+index.html
+game.js
+style.css
+assets/
 ```
 
-## Fairness und Regeln
+Aufrufbar ist das Spiel dann unter `…/index.html` bzw. der Domain-Root.
 
-Damit alle die gleiche Chance haben:
+**Hinweise (z. B. für All-Inkl / klassisches Webhosting):**
+- **Statisch genügt** – kein Node/PHP nötig. Einfach per FTP/SFTP hochladen.
+- **HTTPS aktivieren** (Let's Encrypt) – sauberer und vermeidet Mixed-Content.
+- **Dateipfade sind case-sensitiv** auf Linux-Servern. Lokal (macOS/Windows) ist
+  Groß-/Kleinschreibung egal, auf dem Server nicht – alle Asset-Namen sind
+  durchgängig klein geschrieben, also passt es; bei eigenen Ergänzungen darauf achten.
+- **Phaser kommt per CDN** (`cdn.jsdelivr.net`). Für volle Eigenständigkeit kann
+  man `phaser.min.js` herunterladen, ins Projekt legen und in `index.html`
+  lokal einbinden (fällt der CDN aus, zeigt das Spiel sonst eine Fehlermeldung).
+- **Relative Pfade**: Assets werden relativ geladen, das Spiel funktioniert daher
+  auch in einem Unterordner.
 
-- **Erst nach dem Themen-Drop starten** (Samstag 12:00). Dein Repo darf nicht vorher entstehen.
-- **Solo bauen.**
-- **Progressiv pushen.** Lokal bauen und am Ende alles in einem Schwung hochladen ist nicht erlaubt. Wir schauen uns den Push-Verlauf an, nicht das Commit-Datum.
-- **Öffentliches Repo**, damit alles nachvollziehbar bleibt.
-- Dein Game muss zum **Samstags-Thema** passen. Ein vorgebautes Game einzureichen funktioniert also ohnehin nicht.
+---
 
-## Bewertung
+## Highscore
 
-Bewertet wird von mir und 5 weiteren Judges nach drei Dingen:
+Die Bestenliste wird aktuell **lokal im Browser** gespeichert (`localStorage`),
+also pro Gerät/Browser. Eine globale Online-Highscore ist bewusst (noch) nicht
+eingebaut.
 
-1. **Funktioniert es?**
-2. **Wie kreativ ist dein Ansatz?**
-3. **Wie sauber ist die Umsetzung?**
+---
 
-Die **Top 3** stellen ihren Build danach kurz vor (ein kleiner Walkthrough, wo du dein Game zeigst und erklärst) und bekommen das Preisgeld.
+## Technik
 
-## Das Starter-Gerüst
+- **Phaser 3.80** (über CDN), Vanilla JavaScript, kein Bundler/Build.
+- Audio rein prozedural (Web Audio), keine Sound-Dateien.
+- Eine Datei `game.js` enthält alle Scenes (Boot, Menü, Highscore, Spiel).
 
-In diesem Repo liegt ein minimales Web-Gerüst (`index.html`, `style.css`, `game.js`), mit dem du direkt loslegen kannst. Du musst es nicht nutzen. Wenn du dein Game mit einer anderen Engine baust (z.B. Godot, Python), ist das völlig okay, dann ersetz die Dateien einfach durch dein Projekt.
+### Projektstruktur
 
-Viel Erfolg und viel Spaß. Lass uns was bauen 🚀
+```
+index.html      – Einstieg, lädt Phaser (CDN) + game.js
+style.css       – Seiten-Layout, Rotate-Gate (Querformat-Hinweis)
+game.js         – komplette Spiellogik & UI
+assets/         – Grafiken (PNG/JPG)
+tools/
+  gameplay-balance-check.mjs  – Dev-Test für Balance-Invarianten
+```
+
+### Entwicklung
+
+Balance-/Sequenz-Invarianten prüfen (kein Spiel nötig):
+
+```bash
+node tools/gameplay-balance-check.mjs
+node --check game.js
+```
+
+---
+
+## Hinweis
+
+Die animierte Wasseroberfläche und die Flughöhe der Ente sind als visuelle
+Baseline festgelegt (siehe `CLAUDE.md`) und sollten nur auf ausdrücklichen Wunsch
+verändert werden.

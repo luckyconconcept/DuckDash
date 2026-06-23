@@ -236,7 +236,6 @@ class BootScene extends Phaser.Scene {
     this.load.image("soap", "assets/soap.png?v=20260622-assets-ui1");
     this.load.image("soapV2", "assets/soap_v2.png?v=20260622-assets-ui1");
     this.load.image("toothbrush", "assets/toothbrush.png");
-    this.load.image("whirlpoolV2", "assets/whirlpool_v2.png?v=20260622-assets-ui1");
     this.load.image("pearlPink", "assets/pearl_pink.png?v=20260622-assets-ui1");
     this.load.image("pearlBlue", "assets/pearl_blue.png?v=20260622-assets-ui1");
     this.load.image("pearlGold", "assets/pearl_gold.png?v=20260622-assets-ui1");
@@ -257,13 +256,7 @@ class BootScene extends Phaser.Scene {
     this.load.image("duckHero", "assets/duck_hero.png?v=20260622-assets-ui1");
     this.load.image("duckGameOver", "assets/duck_gameover.png?v=20260622-assets-ui1");
     this.load.image("duckVictory", "assets/duck_victory.png?v=20260622-assets-ui1");
-    this.load.image("uiPanelLarge", "assets/ui_panel_large.png?v=20260622-assets-ui1");
-    this.load.image("uiPanelSmall", "assets/ui_panel_small.png?v=20260622-assets-ui1");
-    this.load.image("uiButtonPrimary", "assets/ui_button_primary.png?v=20260622-assets-ui1");
-    this.load.image("uiButtonSecondary", "assets/ui_button_secondary.png?v=20260622-assets-ui1");
-    this.load.image("uiButtonDanger", "assets/ui_button_danger.png?v=20260622-assets-ui1");
     this.load.image("uiInputName", "assets/ui_input_name.png?v=20260622-assets-ui1");
-    this.load.image("uiNameBadge", "assets/ui_name_badge.png?v=20260622-assets-ui1");
     this.load.image("uiHome", "assets/ui_home.png?v=20260623-crisp1");
     this.load.image("uiPlay", "assets/ui_play.png?v=20260623-crisp1");
     this.load.image("uiRestart", "assets/ui_restart.png?v=20260623-crisp1");
@@ -271,13 +264,7 @@ class BootScene extends Phaser.Scene {
     this.load.image("uiPearlCounter", "assets/ui_pearl_counter.png?v=20260622-assets-ui1");
     this.load.image("obstacleSponge", "assets/obstacle_sponge.png?v=20260622-assets-ui1");
     this.load.image("obstacleDuckRing", "assets/obstacle_duck_ring.png?v=20260622-assets-ui1");
-    this.load.image("obstacleToyBoat", "assets/obstacle_rubber_boat_toy.png?v=20260622-assets-ui1");
-    this.load.image("obstacleRazorUnderwater", "assets/obstacle_razor_underwater.png?v=20260622-assets-ui1");
     this.load.image("obstacleBubbleGate", "assets/obstacle_bubble_gate.png?v=20260622-assets-ui1");
-    this.load.image("obstacleTowelSink", "assets/obstacle_towel_sink.png?v=20260622-assets-ui1");
-    this.load.image("powerupHeart", "assets/powerup_heart.png?v=20260622-assets-ui1");
-    this.load.image("fxSplashSmall", "assets/fx_splash_small.png?v=20260622-assets-ui1");
-    this.load.image("fxSplashBig", "assets/fx_splash_big.png?v=20260622-assets-ui1");
     this.load.image("fxBubblePop", "assets/fx_bubble_pop.png?v=20260622-assets-ui1");
     this.load.image("fxQuackWave", "assets/fx_quack_wave.png?v=20260622-assets-ui1");
     this.load.image("fxQuackWavePrompt", "assets/fx_quack_wave_prompt.png?v=20260622-newnew1");
@@ -3707,18 +3694,6 @@ function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   container.on("pointerover", () => container.setScale(1.04));
   container.on("pointerout", () => container.setScale(1));
   return container;
-}
-
-function getButtonAssetKey(label) {
-  if (label === "BEENDEN" || label === "MENUE" || label === "MENÜ") {
-    return "uiButtonDanger";
-  }
-
-  if (label === "HIGHSCORE" || label === "BESTENLISTE" || label === "ZURUECK" || label === "ZURÜCK" || label === "NEUSTART") {
-    return "uiButtonSecondary";
-  }
-
-  return "uiButtonPrimary";
 }
 
 function getButtonColors(label) {
