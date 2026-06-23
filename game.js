@@ -617,7 +617,10 @@ class GameScene extends Phaser.Scene {
     this.ground = this.add.rectangle(GAME_WIDTH / 2, DUCK_WATERLINE + 8, GAME_WIDTH, 24, 0x21a8c9, 0);
     this.physics.add.existing(this.ground, true);
     this.surfaceCollider = this.physics.add.collider(this.duck, this.ground);
-    this.physics.add.overlap(this.duck, this.obstacles, this.handleHit, null, this);
+    // Obstacle outcomes are decided solely by resolveObstacleChallengeWindows()
+    // using fair, mode-aware x-windows. A physics overlap here would fire on raw
+    // body contact (earlier, and before a dive can register), which made wide
+    // obstacles like the toothbrush cup impossible to dive through.
     this.physics.add.overlap(this.duck, this.collectibles, this.collectPearl, null, this);
     this.physics.add.overlap(this.duck, this.powerUps, this.collectPowerUp, null, this);
 
