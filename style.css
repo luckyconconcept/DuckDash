@@ -20,9 +20,11 @@ body {
 
 body {
   overflow: hidden;
+  /* Full-bleed scene behind the game; subtle dim so the centred play area pops.
+     The gradient at the end is the fallback if the image can't load. */
   background:
-    radial-gradient(circle at 20% 15%, rgba(255, 212, 63, 0.4), transparent 24rem),
-    radial-gradient(circle at 82% 28%, rgba(255, 111, 89, 0.28), transparent 26rem),
+    linear-gradient(rgba(7, 38, 63, 0.22), rgba(7, 38, 63, 0.34)),
+    url("assets/bg_game.jpg?v=20260623-bg1") center center / cover no-repeat fixed,
     linear-gradient(135deg, #e8fbff 0%, #8fe8ef 45%, #2fb5d8 100%);
   color: var(--ink);
   font-family: "Trebuchet MS", "Gill Sans", Verdana, sans-serif;
