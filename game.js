@@ -1900,7 +1900,12 @@ class GameScene extends Phaser.Scene {
     }
 
     this.recordChallengeOutcome(obstacle, "hit");
-    this.lives -= 1;
+    // 0 hearts is a "last chance": the run only ends when a hit lands while
+    // already out of hearts. So a hit is fatal only if lives is already 0.
+    const fatal = this.lives <= 0;
+    if (!fatal) {
+      this.lives -= 1;
+    }
     this.combo = 0;
     this.comboText.setText("");
     SoundFX.hit();
@@ -1922,9 +1927,15 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    if (this.lives > 0) {
-      this.duck.setTint(0x9df6ff);
-      this.showFloatingText("SCHAUMSCHILD!", this.duck.x + 170, this.duck.y - 110, "#9df6ff");
+    if (!fatal) {
+      const lastChance = this.lives <= 0;
+      this.duck.setTint(lastChance ? 0xff8a5c : 0x9df6ff);
+      this.showFloatingText(
+        lastChance ? "LETZTE CHANCE!" : "AUTSCH!",
+        this.duck.x + 170,
+        this.duck.y - 110,
+        lastChance ? "#ff8a5c" : "#9df6ff",
+      );
       this.tweens.add({
         targets: this.duck,
         alpha: 0.44,
