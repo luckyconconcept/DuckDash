@@ -2563,11 +2563,6 @@ class GameScene extends Phaser.Scene {
   }
 
   showDiveWake() {
-    this.diveWake?.destroy();
-    this.diveWake = this.add.ellipse(this.duck.x + 24, this.duck.y + 42, 172, 54, 0x6ff4ff, 0.28);
-    this.diveWake.setDepth(7);
-    this.diveWake.setStrokeStyle(3, 0xeaffff, 0.45);
-
     this.diveBubbleTrail?.destroy();
     const trailKey = this.textures.exists("fxDiveLaneTrail") ? "fxDiveLaneTrail" : "fxUnderwaterBubbles";
     this.diveBubbleTrail = this.add.image(this.duck.x + 16, this.duck.y + 42, trailKey);
