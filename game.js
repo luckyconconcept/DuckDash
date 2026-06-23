@@ -2707,6 +2707,20 @@ class GameScene extends Phaser.Scene {
     SoundFX.success();
     this.splash(this.duck.x + 24, this.duck.y + 46);
     this.burst(this.duck.x + 38, this.duck.y + 26, isPerfect ? ["pearlGold", "pearlBlue"] : ["pearlBlue"], isPerfect ? 18 : 10, 0.1, isPerfect ? 120 : 78);
+    // prepareObstacleForRemoval() disables the body, which stops the obstacle's
+    // scroll velocity. Without an explicit removal tween it would freeze in place
+    // and never reach the off-screen cleanup, so keep it drifting left and fade
+    // it out (matching how stomp/hit/turbo obstacles are cleared).
+    if (obstacle.active) {
+      this.tweens.add({
+        targets: obstacle,
+        x: obstacle.x - 240,
+        alpha: 0,
+        duration: 360,
+        ease: "Sine.in",
+        onComplete: () => obstacle.destroy(),
+      });
+    }
   }
 
   getComboMultiplier() {
