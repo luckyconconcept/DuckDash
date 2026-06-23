@@ -252,7 +252,7 @@ class BootScene extends Phaser.Scene {
     this.load.image("uiPause", "assets/ui_pause.png?v=20260623-crisp1");
     this.load.image("uiHeart", "assets/ui_heart.png?v=20260622-assets-ui1");
     this.load.image("uiTrophy", "assets/ui_trophy.png?v=20260623-crisp1");
-    this.load.image("uiHelp", "assets/help_icon.png?v=20260623-help1");
+    this.load.image("uiHelp", "assets/help_icon.png?v=20260623-help2");
     this.load.image("duckHero", "assets/duck_hero.png?v=20260622-assets-ui1");
     this.load.image("duckGameOver", "assets/duck_gameover.png?v=20260622-assets-ui1");
     this.load.image("duckVictory", "assets/duck_victory.png?v=20260622-assets-ui1");
@@ -272,10 +272,10 @@ class BootScene extends Phaser.Scene {
     this.load.image("fxDiveLaneTrail", "assets/fx_dive_lane_trail.png?v=20260622-newnew1");
     this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
     this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
-    this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260623-cutout1");
-    this.load.image("uiSignalDive", "assets/ui_signal_dive.png?v=20260623-cutout1");
-    this.load.image("uiSignalStomp", "assets/ui_signal_stomp.png?v=20260623-cutout1");
-    this.load.image("uiSignalStayUp", "assets/ui_signal_stay_up.png?v=20260623-cutout1");
+    this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260623-pot2");
+    this.load.image("uiSignalDive", "assets/ui_signal_dive.png?v=20260623-pot2");
+    this.load.image("uiSignalStomp", "assets/ui_signal_stomp.png?v=20260623-pot2");
+    this.load.image("uiSignalStayUp", "assets/ui_signal_stay_up.png?v=20260623-pot2");
   }
 
   create() {
@@ -353,9 +353,9 @@ class MenuScene extends Phaser.Scene {
       }
     });
 
-    const helpButton = this.add.image(GAME_WIDTH - 74, 70, "uiHelp").setScale(0.052).setDepth(6).setInteractive({ useHandCursor: true });
-    helpButton.on("pointerover", () => helpButton.setScale(0.057));
-    helpButton.on("pointerout", () => helpButton.setScale(0.052));
+    const helpButton = this.add.image(GAME_WIDTH - 74, 70, "uiHelp").setScale(0.127).setDepth(6).setInteractive({ useHandCursor: true });
+    helpButton.on("pointerover", () => helpButton.setScale(0.14));
+    helpButton.on("pointerout", () => helpButton.setScale(0.127));
     helpButton.on("pointerdown", () => this.openHelp());
 
     this.input.keyboard.on("keydown", (event) => {
@@ -466,10 +466,10 @@ class MenuScene extends Phaser.Scene {
     section("STEUERUNG");
     note("Tippen oder ↑ = Springen.   ↓ gedrückt halten = Tauchen (länger = tiefer).   ← / → = zur Seite driften.");
     section("DIE SIGNALE — erscheinen kurz vor jedem Hindernis");
-    row("uiSignalJump", 0.042, "SPRINGEN", "Spring über das Hindernis.");
-    row("uiSignalDive", 0.042, "TAUCHEN", "Tauch unter dem Hindernis durch.");
-    row("uiSignalStomp", 0.042, "DRAUF", "Fall von oben auf den Gegner.");
-    row("uiSignalStayUp", 0.042, "OBEN BLEIBEN", "Bleib oben — NICHT tauchen, sonst Treffer!");
+    row("uiSignalJump", 0.103, "SPRINGEN", "Spring über das Hindernis.");
+    row("uiSignalDive", 0.103, "TAUCHEN", "Tauch unter dem Hindernis durch.");
+    row("uiSignalStomp", 0.103, "DRAUF", "Fall von oben auf den Gegner.");
+    row("uiSignalStayUp", 0.103, "OBEN BLEIBEN", "Bleib oben — NICHT tauchen, sonst Treffer!");
     section("POWER-UPS");
     row("powerupShieldV2", 0.24, "Schild", "Fängt einen Treffer ab.");
     row("powerupMagnetV2", 0.27, "Magnet", "Zieht Perlen für kurze Zeit an.");
@@ -1555,7 +1555,7 @@ class GameScene extends Phaser.Scene {
     let pulseTarget;
     if (cueConfig.icon && this.textures.exists(cueConfig.icon)) {
       // Use the round signal badge as the advance-warning cue.
-      const baseScale = 0.095;
+      const baseScale = 0.233;
       const icon = this.add.image(0, 0, cueConfig.icon).setScale(baseScale);
       cue.add(icon);
       pulseTarget = icon;
@@ -3952,6 +3952,9 @@ const config = {
     antialias: true,
     pixelArt: false,
     roundPixels: false,
+    // Smooth, non-pixelated downscaling for the many large icons shown small
+    // (power-of-two textures like the 512px UI/signal icons get mipmaps).
+    mipmapFilter: "LINEAR_MIPMAP_LINEAR",
   },
   scene: [BootScene, MenuScene, HighscoreScene, GameScene],
 };
