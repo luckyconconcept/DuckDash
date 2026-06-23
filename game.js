@@ -529,6 +529,7 @@ class GameScene extends Phaser.Scene {
     this.jumpQueuedUntil = 0;
     this.isGameOver = false;
     this.isPaused = false;
+    this.pausedAt = 0;
     this.invulnerableUntil = 0;
     this.isDiving = false;
     this.isResurfacing = false;
@@ -958,6 +959,8 @@ class GameScene extends Phaser.Scene {
     this.diveHeld = held;
     this.diveQueuedUntil = 0;
     this.diveQueuedHeld = false;
+    // Drop any buffered jump so it can't fire on the frame the duck resurfaces.
+    this.jumpQueuedUntil = 0;
     this.diveStartedAt = this.time.now;
     this.diveUntil = this.time.now + DIVE_MIN_DURATION;
     SoundFX.unlock();
@@ -2094,11 +2097,31 @@ class GameScene extends Phaser.Scene {
 
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
+      this.pausedAt = this.time.now;
       this.physics.pause();
       this.setPearlTweensPaused(true);
       this.showPauseOverlay();
     } else {
       this.resumeGame();
+    }
+  }
+
+  compensatePausedTime() {
+    // this.time.now keeps advancing while paused, so absolute deadlines would
+    // otherwise expire during the pause. Shift active deadlines and past
+    // timestamps forward by the paused duration.
+    if (!this.pausedAt) {
+      return;
+    }
+    const pausedFor = this.time.now - this.pausedAt;
+    this.pausedAt = 0;
+    for (const key of ["magnetUntil", "turboUntil", "invulnerableUntil", "nextPowerUpAt", "diveUntil", "diveRecoverUntil"]) {
+      if (this[key] > this.time.now - pausedFor) {
+        this[key] += pausedFor;
+      }
+    }
+    if (this.lastComboAt) {
+      this.lastComboAt += pausedFor;
     }
   }
 
@@ -2137,6 +2160,7 @@ class GameScene extends Phaser.Scene {
 
     this.resetTouchDrift();
     this.isPaused = false;
+    this.compensatePausedTime();
     this.destroyPauseOverlay();
     this.physics.resume();
     this.setPearlTweensPaused(false);
@@ -2444,6 +2468,11 @@ class GameScene extends Phaser.Scene {
       duration: 240,
       ease: "Cubic.out",
       onComplete: () => {
+        // Don't re-enable gravity/collision on a duck that died mid-resurface
+        // (the tween keeps running after physics.pause() on game-over).
+        if (this.isGameOver) {
+          return;
+        }
         this.isResurfacing = false;
         this.setDuckNormalBody();
         this.duck.body.allowGravity = true;
@@ -2557,6 +2586,11 @@ class GameScene extends Phaser.Scene {
 
   resolveObstacleChallengeWindows() {
     this.obstacles.getChildren().forEach((obstacle) => {
+      // A hit on an earlier obstacle this frame can end the run mid-loop; stop
+      // resolving the rest so no score/combo is awarded after game-over.
+      if (this.isGameOver) {
+        return;
+      }
       if (!obstacle.active || obstacle.getData("passed") || obstacle.x > this.duck.x + 74 || obstacle.x < this.duck.x - 96) {
         return;
       }
