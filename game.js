@@ -151,17 +151,54 @@ const SoundFX = {
     oscillator.stop(this.ctx.currentTime + duration);
   },
 
+  glide(f0, f1, duration = 0.12, type = "sawtooth", gain = 0.05) {
+    if (!this.ctx) {
+      return;
+    }
+
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+
+    const t = this.ctx.currentTime;
+    const oscillator = this.ctx.createOscillator();
+    const amp = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1900, t);
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(f0, t);
+    oscillator.frequency.linearRampToValueAtTime(f1, t + duration);
+    amp.gain.setValueAtTime(0.0001, t);
+    amp.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+    amp.gain.exponentialRampToValueAtTime(0.0008, t + duration);
+    oscillator.connect(filter);
+    filter.connect(amp);
+    amp.connect(this.ctx.destination);
+    oscillator.start(t);
+    oscillator.stop(t + duration + 0.02);
+  },
+
+  quack(gain = 0.06) {
+    // Characteristic duck quack: a quick down-glide through a lowpass with a
+    // short upward tail, instead of a flat synth beep.
+    this.glide(760, 320, 0.1, "sawtooth", gain);
+    window.setTimeout(() => this.glide(380, 560, 0.06, "sawtooth", gain * 0.6), 55);
+  },
+
   jump() {
-    this.tone(520, 0.09, "triangle", 0.04);
+    this.quack(0.05);
   },
 
   dive() {
     this.tone(190, 0.12, "sine", 0.045);
   },
 
-  collect() {
-    this.tone(720, 0.06, "triangle", 0.04);
-    window.setTimeout(() => this.tone(980, 0.07, "triangle", 0.035), 45);
+  collect(pitch = 1) {
+    // Watery bubble 'pop'. Pitch rises with the combo for an ascending,
+    // increasingly satisfying chime as the player keeps the streak alive.
+    this.glide(520 * pitch, 1040 * pitch, 0.05, "sine", 0.045);
+    window.setTimeout(() => this.tone(1320 * pitch, 0.045, "sine", 0.03), 40);
   },
 
   success() {
@@ -1514,7 +1551,7 @@ class GameScene extends Phaser.Scene {
     }
     this.score += value;
     this.pearls += 1;
-    SoundFX.collect();
+    SoundFX.collect(1 + Math.min(0.6, this.combo * 0.03));
     const driftBonus = this.getDriftBonus();
     if (driftBonus > 0) {
       this.score += driftBonus;
