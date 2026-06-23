@@ -29,10 +29,10 @@ const STOMP_MIN_VELOCITY_Y = -180;
 const STOMP_HORIZONTAL_GRACE = 112;
 const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
 const MODE_CUE_CONFIG = {
-  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f },
-  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8 },
-  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f },
-  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76 },
+  jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalJump" },
+  dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8, icon: "uiSignalDive" },
+  stomp: { text: "DRAUF", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalStomp" },
+  underwater: { text: "OBEN", color: "#ff70ad", fill: 0xff3f76, icon: "uiSignalStayUp" },
 };
 const OBSTACLE_SEQUENCES = {
   early: [
@@ -284,6 +284,10 @@ class BootScene extends Phaser.Scene {
     this.load.image("fxDiveLaneTrail", "assets/fx_dive_lane_trail.png?v=20260622-newnew1");
     this.load.image("fxSpeedLines", "assets/fx_speed_lines.png?v=20260622-assets-ui1");
     this.load.image("fxUnderwaterBubbles", "assets/fx_underwater_bubbles.png?v=20260622-assets-ui1");
+    this.load.image("uiSignalJump", "assets/ui_signal_jump.png?v=20260623-cutout1");
+    this.load.image("uiSignalDive", "assets/ui_signal_dive.png?v=20260623-cutout1");
+    this.load.image("uiSignalStomp", "assets/ui_signal_stomp.png?v=20260623-cutout1");
+    this.load.image("uiSignalStayUp", "assets/ui_signal_stay_up.png?v=20260623-cutout1");
   }
 
   create() {
@@ -1391,22 +1395,40 @@ class GameScene extends Phaser.Scene {
     cue.setAlpha(0);
     cue.setData("cleanup", true);
 
-    const ring = this.add.circle(0, 0, 34, cueConfig.fill, 0.42);
-    ring.setStrokeStyle(4, 0xffffff, 0.7);
-    const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
-    cue.add([ring, text]);
+    let pulseTarget;
+    if (cueConfig.icon && this.textures.exists(cueConfig.icon)) {
+      // Use the round signal badge as the advance-warning cue.
+      const baseScale = 0.06;
+      const icon = this.add.image(0, 0, cueConfig.icon).setScale(baseScale);
+      cue.add(icon);
+      pulseTarget = icon;
+      this.tweens.add({
+        targets: icon,
+        scale: baseScale * 1.1,
+        yoyo: true,
+        repeat: -1,
+        duration: 560,
+        ease: "Sine.inOut",
+      });
+    } else {
+      const ring = this.add.circle(0, 0, 34, cueConfig.fill, 0.42);
+      ring.setStrokeStyle(4, 0xffffff, 0.7);
+      const text = this.add.text(0, 1, cueConfig.text, hudTextStyle(cueConfig.text.length > 5 ? 12 : 14, cueConfig.color)).setOrigin(0.5);
+      cue.add([ring, text]);
+      pulseTarget = ring;
+      this.tweens.add({
+        targets: ring,
+        scale: 1.18,
+        alpha: 0.62,
+        yoyo: true,
+        repeat: -1,
+        duration: 520,
+        ease: "Sine.inOut",
+      });
+    }
 
     obstacle.setData("cue", cue);
-    obstacle.setData("cueRing", ring);
-    this.tweens.add({
-      targets: ring,
-      scale: 1.18,
-      alpha: 0.62,
-      yoyo: true,
-      repeat: -1,
-      duration: 520,
-      ease: "Sine.inOut",
-    });
+    obstacle.setData("cueRing", pulseTarget);
   }
 
   spawnRewardTrailForObstacle(obstacle, config) {
