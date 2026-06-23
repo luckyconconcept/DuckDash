@@ -250,9 +250,9 @@ class BootScene extends Phaser.Scene {
     this.load.image("powerupMagnetV2", "assets/powerup_magnet_v2.png?v=20260622-assets-ui1");
     this.load.image("powerupShieldV2", "assets/powerup_shield_v2.png?v=20260622-assets-ui1");
     this.load.image("powerupTurboV2", "assets/powerup_turbo_v2.png?v=20260622-assets-ui1");
-    this.load.image("uiPause", "assets/ui_pause.png?v=20260622-assets-ui1");
+    this.load.image("uiPause", "assets/ui_pause.png?v=20260623-crisp1");
     this.load.image("uiHeart", "assets/ui_heart.png?v=20260622-assets-ui1");
-    this.load.image("uiTrophy", "assets/ui_trophy.png?v=20260622-assets-ui1");
+    this.load.image("uiTrophy", "assets/ui_trophy.png?v=20260623-crisp1");
     this.load.image("duckHero", "assets/duck_hero.png?v=20260622-assets-ui1");
     this.load.image("duckGameOver", "assets/duck_gameover.png?v=20260622-assets-ui1");
     this.load.image("duckVictory", "assets/duck_victory.png?v=20260622-assets-ui1");
@@ -263,9 +263,9 @@ class BootScene extends Phaser.Scene {
     this.load.image("uiButtonDanger", "assets/ui_button_danger.png?v=20260622-assets-ui1");
     this.load.image("uiInputName", "assets/ui_input_name.png?v=20260622-assets-ui1");
     this.load.image("uiNameBadge", "assets/ui_name_badge.png?v=20260622-assets-ui1");
-    this.load.image("uiHome", "assets/ui_home.png?v=20260622-assets-ui1");
-    this.load.image("uiPlay", "assets/ui_play.png?v=20260622-assets-ui1");
-    this.load.image("uiRestart", "assets/ui_restart.png?v=20260622-assets-ui1");
+    this.load.image("uiHome", "assets/ui_home.png?v=20260623-crisp1");
+    this.load.image("uiPlay", "assets/ui_play.png?v=20260623-crisp1");
+    this.load.image("uiRestart", "assets/ui_restart.png?v=20260623-crisp1");
     this.load.image("uiScoreCoin", "assets/ui_score_coin.png?v=20260622-assets-ui1");
     this.load.image("uiPearlCounter", "assets/ui_pearl_counter.png?v=20260622-assets-ui1");
     this.load.image("obstacleSponge", "assets/obstacle_sponge.png?v=20260622-assets-ui1");
@@ -490,21 +490,21 @@ class HighscoreScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(4);
 
-    const startButton = makeButton(this, GAME_WIDTH / 2 - 170, 606, "START", 260);
+    const startButton = makeButton(this, GAME_WIDTH / 2 - 170, 588, "START", 260);
     startButton.setDepth(4);
     startButton.on("pointerdown", () => this.scene.start("GameScene"));
 
-    const backButton = makeButton(this, GAME_WIDTH / 2 + 170, 606, "ZURÜCK", 260);
+    const backButton = makeButton(this, GAME_WIDTH / 2 + 170, 588, "ZURÜCK", 260);
     backButton.setDepth(4);
     backButton.on("pointerdown", () => this.scene.start("MenuScene"));
 
     this.input.on("pointerdown", (pointer) => {
-      if (isWithinButton(pointer, GAME_WIDTH / 2 - 170, 606, "START", 260)) {
+      if (isWithinButton(pointer, GAME_WIDTH / 2 - 170, 588, "START", 260)) {
         this.scene.start("GameScene");
         return;
       }
 
-      if (isWithinButton(pointer, GAME_WIDTH / 2 + 170, 606, "ZURÜCK", 260)) {
+      if (isWithinButton(pointer, GAME_WIDTH / 2 + 170, 588, "ZURÜCK", 260)) {
         this.scene.start("MenuScene");
       }
     });
@@ -926,7 +926,7 @@ class GameScene extends Phaser.Scene {
 
   handleGameOverPointer(pointer) {
     const isTopFive = this.stats.scores.some((entry) => entry.id === this.resultEntryId);
-    const buttonY = isTopFive ? 590 : 576;
+    const buttonY = isTopFive ? 572 : 558;
 
     if (isWithinButton(pointer, 412, buttonY, "NOCHMAL", 190)) {
       this.savePendingGameOverName();
@@ -2045,7 +2045,7 @@ class GameScene extends Phaser.Scene {
     this.add.text(resultColumnX + 34, 420, "PERLEN", hudTextStyle(15, "#ffffff")).setOrigin(0.5).setDepth(33);
     if (!isTopFive) {
       this.add
-        .text(resultColumnX, 490, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
+        .text(GAME_WIDTH / 2, 474, `Highscore ${nextStats.highscore.toLocaleString("de-DE")}`, hudTextStyle(22, "#ffd43f"))
         .setOrigin(0.5)
         .setDepth(32);
     }
@@ -2061,15 +2061,18 @@ class GameScene extends Phaser.Scene {
       sumBucket(ch.turboClearedByMode) +
       sumBucket(ch.bombClearedByMode) +
       sumBucket(ch.absorbedByMode);
-    this.add
-      .text(
-        449,
-        512,
-        `ZEIT ${timeLabel}    ·    BESTE COMBO x${this.longestCombo}    ·    GEGNER ${overcome}`,
-        hudTextStyle(19, "#eaffff"),
-      )
-      .setOrigin(0.5)
-      .setDepth(33);
+    // Shown only when there's no name-input crowding the footer (non-top-5 runs).
+    if (!isTopFive) {
+      this.add
+        .text(
+          GAME_WIDTH / 2,
+          506,
+          `ZEIT ${timeLabel}    ·    BESTE COMBO x${this.longestCombo}    ·    GEGNER ${overcome}`,
+          hudTextStyle(18, "#eaffff"),
+        )
+        .setOrigin(0.5)
+        .setDepth(33);
+    }
 
     let nameLabel = null;
     if (isTopFive) {
@@ -2094,7 +2097,7 @@ class GameScene extends Phaser.Scene {
       });
     }
 
-    const buttonY = isTopFive ? 590 : 576;
+    const buttonY = isTopFive ? 572 : 558;
     const again = makeButton(this, 412, buttonY, "NOCHMAL", 190, { icon: false, fontSize: 23 });
     again.setDepth(32);
     again.on("pointerdown", () => {
@@ -3278,22 +3281,21 @@ function addWaterGlints(scene, depth) {
 function makeGlassPanel(scene, x, y, width, height, depth = 2, fillColor = 0x0878ca) {
   const panel = scene.add.graphics();
   panel.setDepth(depth);
+  // Soft drop shadow.
   panel.fillStyle(0x051d35, 0.22);
-  panel.fillRoundedRect(x + 10, y + 12, width, height, 34);
-  panel.fillStyle(0x9df6ff, 0.18);
+  panel.fillRoundedRect(x + 8, y + 12, width, height, 30);
+  // Gentle outer glow.
+  panel.fillStyle(0x9df6ff, 0.16);
   panel.fillRoundedRect(x - 5, y - 5, width + 10, height + 10, 34);
-  panel.fillStyle(fillColor, 0.94);
+  // Single clean fill.
+  panel.fillStyle(fillColor, 0.96);
   panel.fillRoundedRect(x, y, width, height, 30);
-  panel.fillStyle(0xffffff, 0.18);
-  panel.fillRoundedRect(x + 18, y + 18, width - 36, height * 0.42, 22);
-  panel.fillStyle(0x053c72, 0.18);
-  panel.fillRoundedRect(x + 18, y + height * 0.58, width - 36, height * 0.34, 22);
-  panel.lineStyle(7, 0xffffff, 0.88);
+  // One subtle top gloss (capped so it stays a sheen, not a band).
+  panel.fillStyle(0xffffff, 0.1);
+  panel.fillRoundedRect(x + 18, y + 16, width - 36, Math.min(height * 0.26, 110), 22);
+  // One border.
+  panel.lineStyle(6, 0xffffff, 0.9);
   panel.strokeRoundedRect(x, y, width, height, 30);
-  panel.lineStyle(4, 0x0878ca, 0.7);
-  panel.strokeRoundedRect(x + 14, y + 14, width - 28, height - 28, 22);
-  panel.fillStyle(0xffffff, 0.18);
-  panel.fillRoundedRect(x + 34, y + 26, width - 68, Math.max(32, height * 0.18), 22);
   return panel;
 }
 
@@ -3325,15 +3327,11 @@ function makeScoreFeatureCard(scene, x, y, width, height, title, value, iconKey)
 }
 
 function makeWinnerCard(scene, x, y, width, height, entry) {
-  const graphic = scene.add.graphics().setDepth(3);
-  graphic.fillStyle(0xffc51f, 0.96);
-  graphic.fillRoundedRect(x, y, width, height, 22);
-  graphic.lineStyle(5, 0xffffff, 0.78);
-  graphic.strokeRoundedRect(x, y, width, height, 22);
-  scene.add.image(x + width / 2, y + 104, "duckVictory").setScale(0.22).setDepth(4);
-  addFittedText(scene, x + width / 2, y + 182, sanitizePlayerName(entry.name), hudTextStyle(30, "#ffffff"), width - 62, { originX: 0.5, depth: 4 });
-  addFittedText(scene, x + width / 2, y + 232, entry.score.toLocaleString("de-DE"), titleStyle(48, "#123044"), width - 58, { originX: 0.5, depth: 4 });
-  return graphic;
+  // No yellow box — the champion duck, name and score sit directly on the panel.
+  scene.add.image(x + width / 2, y + height * 0.36, "duckVictory").setScale(0.24).setDepth(4);
+  addFittedText(scene, x + width / 2, y + height * 0.68, sanitizePlayerName(entry.name), hudTextStyle(32, "#ffffff"), width - 40, { originX: 0.5, depth: 4 });
+  addFittedText(scene, x + width / 2, y + height * 0.86, entry.score.toLocaleString("de-DE"), titleStyle(52, "#ffffff"), width - 36, { originX: 0.5, depth: 4 });
+  return null;
 }
 
 function makeLeaderboardRow(scene, x, y, width, height, rank, entry) {
@@ -3487,8 +3485,11 @@ function makeButton(scene, x, y, label, minWidthOverride = null, options = {}) {
   g.fillRoundedRect(-halfWidth, -halfHeight + 5, width, height, radius);
   g.fillStyle(colors.fill, 1);
   g.fillRoundedRect(-halfWidth, -halfHeight, width, height, radius);
-  g.fillStyle(0xffffff, 0.22);
-  g.fillRoundedRect(-halfWidth + 6, -halfHeight + 5, width - 12, height * 0.4, radius);
+  // Subtle top gloss: a thin pill strip with its OWN radius so it never clamps
+  // into a lens/blob.
+  const glossH = Math.round(height * 0.34);
+  g.fillStyle(0xffffff, 0.18);
+  g.fillRoundedRect(-halfWidth + 10, -halfHeight + 5, width - 20, glossH, glossH / 2);
   g.lineStyle(3, colors.stroke, 0.95);
   g.strokeRoundedRect(-halfWidth, -halfHeight, width, height, radius);
 
@@ -3561,10 +3562,10 @@ function getButtonIcon(label) {
 }
 
 function isWithinButton(pointer, x, y, label, minWidthOverride = null) {
-  const iconKey = getButtonIcon(label);
   const minWidth = label === "BESTENLISTE" ? 312 : label === "SPIELEN" ? 292 : 190;
-  const width = minWidthOverride ?? Math.max(minWidth, label.length * 17 + (iconKey ? 78 : 38));
-  const height = label === "SPIELEN" || label === "BESTENLISTE" || width >= 300 ? 76 : 64;
+  const largeButton = label === "SPIELEN" || label === "BESTENLISTE" || (minWidthOverride ?? 0) >= 300;
+  const width = minWidthOverride ?? minWidth;
+  const height = largeButton ? 74 : 62;
   return Math.abs(pointer.x - x) <= width / 2 && Math.abs(pointer.y - y) <= height / 2;
 }
 
