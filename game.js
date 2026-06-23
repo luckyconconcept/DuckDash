@@ -697,7 +697,20 @@ class GameScene extends Phaser.Scene {
     if (this.missionQueue.length === 0) {
       this.missionQueue = Phaser.Utils.Array.Shuffle(MISSION_POOL.map((mission) => ({ ...mission })));
     }
-    this.activeMission = this.missionQueue.shift() || null;
+    // Don't hand out a mission that can't progress yet: stomp obstacles only
+    // appear from ~18s, so a "stomp" goal before then would be impossible.
+    // Rotate such goals to the back and pick the first reachable one.
+    const reachable = (mission) => mission.metric !== "stomps" || this.runTime >= 18;
+    let picked = null;
+    for (let i = 0; i < this.missionQueue.length; i += 1) {
+      const candidate = this.missionQueue.shift();
+      if (reachable(candidate)) {
+        picked = candidate;
+        break;
+      }
+      this.missionQueue.push(candidate);
+    }
+    this.activeMission = picked || this.missionQueue.shift() || null;
     this.missionBase = {
       pearls: this.pearls,
       dives: this.diveCount,
@@ -847,7 +860,9 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      if (!this.touchSwipeHandled && Math.abs(deltaX) > 42 && Math.abs(deltaY) < 64) {
+      // Drift threshold kept clearly above the tap threshold (60) so a tap with
+      // a small sideways slip still registers as a jump rather than a drift.
+      if (!this.touchSwipeHandled && Math.abs(deltaX) > 64 && Math.abs(deltaY) < 64) {
         this.touchDriftDirection = Math.sign(deltaX);
         this.touchDriftActive = true;
         this.lastDriftInputAt = this.time.now;
@@ -856,6 +871,7 @@ class GameScene extends Phaser.Scene {
 
     this.input.on("pointerup", (pointer) => {
       if (this.isPaused || this.isGameOver) {
+        this.resetTouchDrift();
         return;
       }
 
@@ -871,7 +887,7 @@ class GameScene extends Phaser.Scene {
         return;
       }
 
-      if (!this.touchDriftActive && !this.touchSwipeHandled && deltaY < 42 && deltaX < 54) {
+      if (!this.touchDriftActive && !this.touchSwipeHandled && deltaY < 48 && deltaX < 60) {
         this.jump();
       }
 
@@ -3493,7 +3509,9 @@ function isWithinButton(pointer, x, y, label, minWidthOverride = null) {
 }
 
 function isWithinRoundButton(pointer, x, y) {
-  return Math.abs(pointer.x - x) <= 42 && Math.abs(pointer.y - y) <= 42;
+  // Match the visible 68px pause button (±34) so taps next to it in the HUD
+  // don't accidentally pause.
+  return Math.abs(pointer.x - x) <= 34 && Math.abs(pointer.y - y) <= 34;
 }
 
 function getCollectibleValue(key) {
@@ -3692,6 +3710,9 @@ const config = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   backgroundColor: "#6ee6f2",
+  // Allow a second simultaneous touch so holding a drift swipe and tapping to
+  // jump both register (the touch handling already tracks activeTouchPointerId).
+  input: { activePointers: 2 },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
