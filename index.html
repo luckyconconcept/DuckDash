@@ -8,7 +8,6 @@
       content="Duck & Dash ist ein schnelles Browser-Minispiel mit einer Gummiente im chaotischen Badezimmer."
     />
     <title>Duck & Dash</title>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -21,9 +20,9 @@
       </aside>
     </main>
     <script
-      src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"
-      onerror="document.getElementById('game').innerHTML='&lt;p style=&quot;color:#fff;text-align:center;padding:2rem;font-family:sans-serif&quot;&gt;Spiel konnte nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.&lt;/p&gt;'"
+      src="phaser.min.js?v=3.80.1"
+      onerror="document.getElementById('game').innerHTML='&lt;p style=&quot;color:#fff;text-align:center;padding:2rem;font-family:sans-serif&quot;&gt;Spiel konnte nicht geladen werden (phaser.min.js fehlt). Bitte alle Dateien hochladen und neu laden.&lt;/p&gt;'"
     ></script>
-    <script src="game.js?v=20260622-gameover-align1"></script>
+    <script src="game.js?v=20260623-local-phaser"></script>
   </body>
 </html>
