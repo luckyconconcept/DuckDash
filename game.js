@@ -27,7 +27,7 @@ const HUD_PAUSE_Y = 56;
 const STOMP_TOP_GRACE = 48;
 const STOMP_MIN_VELOCITY_Y = -180;
 const STOMP_HORIZONTAL_GRACE = 112;
-const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 700;
+const CHALLENGE_COLLECTIBLE_BLOCK_DISTANCE = 430;
 const MODE_CUE_CONFIG = {
   jump: { text: "SPRUNG", color: "#ffd43f", fill: 0xffc51f, icon: "uiSignalJump" },
   dive: { text: "TAUCH", color: "#9df6ff", fill: 0x1ec9e8, icon: "uiSignalDive" },
@@ -1743,7 +1743,7 @@ class GameScene extends Phaser.Scene {
   activateMagnet() {
     incrementCounter(this.telemetry.powerup.usedEffect, "magnetActivated");
     this.magnetUntil = this.time.now + 9000;
-    this.score += 20;
+    this.score += 5;
     SoundFX.success();
     this.showFloatingText("MAGNET!", this.duck.x + 170, this.duck.y - 110, "#ffd43f");
     this.burst(this.duck.x + 28, this.duck.y - 20, ["pearlGold", "pearlPink", "pearlBlue"], 24, 0.12, 180);
@@ -1753,7 +1753,7 @@ class GameScene extends Phaser.Scene {
   activateShield() {
     incrementCounter(this.telemetry.powerup.usedEffect, "shieldActivated");
     this.shieldCharges = Math.min(2, this.shieldCharges + 1);
-    this.score += 25;
+    this.score += 5;
     SoundFX.success();
     this.duck.setTint(0x9df6ff);
     this.showFloatingText("SCHAUMSCHILD!", this.duck.x + 180, this.duck.y - 118, "#9df6ff");
@@ -1762,9 +1762,9 @@ class GameScene extends Phaser.Scene {
 
   activateTurbo() {
     incrementCounter(this.telemetry.powerup.usedEffect, "turboActivated");
-    this.turboUntil = this.time.now + 4800;
+    this.turboUntil = this.time.now + 3500;
     this.invulnerableUntil = Math.max(this.invulnerableUntil, this.turboUntil);
-    this.score += 30;
+    this.score += 5;
     SoundFX.success();
     this.duck.setTint(0xfff08a);
     this.showFloatingText("TURBO-BLASE!", this.duck.x + 185, this.duck.y - 120, "#ff70ad");
@@ -1785,7 +1785,7 @@ class GameScene extends Phaser.Scene {
   activateQuackBomb() {
     incrementCounter(this.telemetry.powerup.usedEffect, "bombActivated");
     this.bombFlashUntil = this.time.now + 1100;
-    this.score += 35;
+    this.score += 5;
     this.showFloatingText("QUAK-SCHOCKWELLE!", this.duck.x + 190, this.duck.y - 120, "#ffd43f");
     this.cameras.main.shake(120, 0.006);
     this.burst(this.duck.x + 30, this.duck.y - 10, ["pearlGold", "pearlBlue", "quackBombV2"], 22, 0.15, 210);
@@ -1835,7 +1835,7 @@ class GameScene extends Phaser.Scene {
     });
 
     if (cleared > 0) {
-      this.score += cleared * 25;
+      this.score += cleared * 10;
       incrementCounter(this.telemetry.powerup.usedEffect, "bombCleared", cleared);
     }
   }
@@ -2502,7 +2502,7 @@ class GameScene extends Phaser.Scene {
   }
 
   expireCombo() {
-    if (this.combo === 0 || this.time.now - this.lastComboAt < 1900) {
+    if (this.combo === 0 || this.time.now - this.lastComboAt < 1400) {
       return;
     }
 
@@ -2661,6 +2661,15 @@ class GameScene extends Phaser.Scene {
 
   getDriftBonus() {
     if (this.isDiving || this.time.now - this.lastDriftInputAt > 260) {
+      return 0;
+    }
+
+    // Only reward drifting when there's actually an obstacle to dodge nearby —
+    // otherwise it's free score for wiggling on an empty lane.
+    const dodging = this.obstacles
+      .getChildren()
+      .some((o) => o.active && !o.getData("passed") && o.x > this.duck.x - 60 && o.x < this.duck.x + 420);
+    if (!dodging) {
       return 0;
     }
 
@@ -2902,10 +2911,10 @@ class GameScene extends Phaser.Scene {
   }
 
   getComboMultiplier() {
-    // Every 4 combo steps adds +0.25x to collected pearl value (max x2.5 at the
-    // combo cap of 24). Turns "keep the combo alive" into an active, greedy
-    // reason to chase pearls instead of just dodging.
-    return 1 + Math.min(1.5, Math.floor(this.combo / 4) * 0.25);
+    // Every 4 combo steps adds +0.2x to collected pearl value, capped at x2.0
+    // (reached at combo 20). Ramps slower than before so the multiplier rewards
+    // a sustained streak rather than peaking after a handful of pearls.
+    return 1 + Math.min(1.0, Math.floor(this.combo / 4) * 0.2);
   }
 
   addCombo(amount, message, x, y, color) {
