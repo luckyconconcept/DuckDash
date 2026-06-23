@@ -980,6 +980,19 @@ class GameScene extends Phaser.Scene {
       this.showQuip();
     }
 
+    // Safety net: an obstacle whose body was disabled (so it stopped scrolling)
+    // but which isn't being animated out is frozen and would never reach the
+    // off-screen cleanup. Remove any such stuck element regardless of how it got
+    // there. Legit removals disable the body and add a tween in the same call,
+    // so an in-flight removal is still tweening and is left alone.
+    this.obstacles.getChildren().forEach((obstacle) => {
+      if (obstacle.active && obstacle.body && !obstacle.body.enable && !this.tweens.isTweening(obstacle)) {
+        this.destroyObstacleVisuals(obstacle);
+        obstacle.getData("label")?.destroy();
+        obstacle.destroy();
+      }
+    });
+
     this.children.each((child) => {
       if (child.active && child.x < -180 && child.getData("cleanup")) {
         if (child.getData("mode")) {
@@ -1273,13 +1286,8 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  decorateCupBrush(obstacle) {
-    const container = this.add.container(obstacle.x, obstacle.y);
-    container.setDepth(6);
-    container.setData("cleanup", true);
-    const wake = this.add.ellipse(0, 112, 170, 28, 0x71f1ff, 0.24);
-    container.add(wake);
-    obstacle.setData("visual", container);
+  decorateCupBrush() {
+    // Wake/shadow ellipse removed per design; the cup sprite stands on its own.
   }
 
   decorateFoamGate(obstacle) {
@@ -1288,7 +1296,6 @@ class GameScene extends Phaser.Scene {
     container.setDepth(7);
     container.setData("cleanup", true);
 
-    const wake = this.add.ellipse(0, 78, 176, 32, 0x71f1ff, 0.2);
     const gate = this.add.image(0, 0, "obstacleBubbleGate").setScale(0.36).setAlpha(0.92);
     const bubbles = [];
     for (let index = 0; index < 8; index += 1) {
@@ -1301,8 +1308,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const cap = this.add.ellipse(0, -88, 130, 32, 0xeaffff, 0.26);
-    const base = this.add.ellipse(0, 72, 164, 28, 0xeaffff, 0.2);
-    container.add([wake, gate, base, ...bubbles, cap]);
+    container.add([gate, ...bubbles, cap]);
     obstacle.setData("visual", container);
   }
 
@@ -1310,10 +1316,9 @@ class GameScene extends Phaser.Scene {
     const container = this.add.container(obstacle.x, obstacle.y);
     container.setDepth(7);
     container.setData("cleanup", true);
-    const wake = this.add.ellipse(0, 46, 178, 28, 0x71f1ff, 0.2);
     const back = this.add.image(-18, -18, "soap").setScale(0.58).setAngle(-7).setAlpha(0.82);
     const front = this.add.image(18, 6, "soap").setScale(0.62).setAngle(5);
-    container.add([wake, back, front]);
+    container.add([back, front]);
     obstacle.setAlpha(0.001);
     obstacle.setData("visual", container);
   }
