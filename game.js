@@ -91,6 +91,14 @@ const OBSTACLE_SEQUENCES = {
     ],
   ],
 };
+const MISSION_POOL = [
+  { metric: "pearls", target: 15, label: "Sammle 15 Perlen" },
+  { metric: "dives", target: 3, label: "Tauche durch 3 Hindernisse" },
+  { metric: "stomps", target: 3, label: "Stampfe 3 Gegner" },
+  { metric: "combo", target: 8, label: "Erreiche Combo x8" },
+  { metric: "time", target: 25, label: "Überlebe 25 Sekunden" },
+];
+const MISSION_REWARD = 200;
 const MENU_START_HIT = {
   x: 184,
   y: 597,
@@ -516,6 +524,12 @@ class GameScene extends Phaser.Scene {
     this.lives = 3;
     this.combo = 0;
     this.longestCombo = 0;
+    this.diveCount = 0;
+    this.stompCount = 0;
+    this.missionsDone = 0;
+    this.missionQueue = [];
+    this.activeMission = null;
+    this.missionBase = { pearls: 0, dives: 0, stomps: 0, time: 0 };
     this.lastComboAt = 0;
     this.lastMilestone = 0;
     this.speed = 300;
@@ -653,6 +667,7 @@ class GameScene extends Phaser.Scene {
     this.pearlText = this.pearlHud.text;
     this.lifeBubbles = this.lifeHud.hearts;
     this.comboText = this.add.text(GAME_WIDTH / 2, 120, "", hudTextStyle(26, "#ffd43f")).setOrigin(0.5).setDepth(21);
+    this.missionText = this.add.text(GAME_WIDTH / 2, 96, "", hudTextStyle(17, "#9df6ff")).setOrigin(0.5).setDepth(21);
     this.specialSlots = {
       shield: makeSpecialSlot(this, 788, 28, "powerupShieldV2", "SCHILD", "#9df6ff"),
       magnet: makeSpecialSlot(this, 888, 28, "powerupMagnetV2", "MAGNET", "#ffd43f"),
@@ -675,6 +690,74 @@ class GameScene extends Phaser.Scene {
       .setAlpha(0);
 
     this.showOnboardingHint();
+    this.startMission();
+  }
+
+  startMission() {
+    if (this.missionQueue.length === 0) {
+      this.missionQueue = Phaser.Utils.Array.Shuffle(MISSION_POOL.map((mission) => ({ ...mission })));
+    }
+    this.activeMission = this.missionQueue.shift() || null;
+    this.missionBase = {
+      pearls: this.pearls,
+      dives: this.diveCount,
+      stomps: this.stompCount,
+      time: this.runTime,
+    };
+    this.refreshMissionHud();
+  }
+
+  missionProgress() {
+    const mission = this.activeMission;
+    if (!mission) {
+      return 0;
+    }
+    switch (mission.metric) {
+      case "pearls":
+        return this.pearls - this.missionBase.pearls;
+      case "dives":
+        return this.diveCount - this.missionBase.dives;
+      case "stomps":
+        return this.stompCount - this.missionBase.stomps;
+      case "combo":
+        return this.combo;
+      case "time":
+        return Math.floor(this.runTime - this.missionBase.time);
+      default:
+        return 0;
+    }
+  }
+
+  refreshMissionHud() {
+    if (!this.missionText) {
+      return;
+    }
+    if (!this.activeMission) {
+      this.missionText.setText("");
+      return;
+    }
+    const progress = Math.min(this.missionProgress(), this.activeMission.target);
+    this.missionText.setText(`ZIEL: ${this.activeMission.label}  (${progress}/${this.activeMission.target})`);
+  }
+
+  updateMission() {
+    if (!this.activeMission) {
+      return;
+    }
+    if (this.missionProgress() >= this.activeMission.target) {
+      this.completeMission();
+      return;
+    }
+    this.refreshMissionHud();
+  }
+
+  completeMission() {
+    this.missionsDone += 1;
+    this.score += MISSION_REWARD;
+    this.showFloatingText(`MISSION! +${MISSION_REWARD}`, GAME_WIDTH / 2, 150, "#ffd43f");
+    this.burst(GAME_WIDTH / 2, 150, ["pearlGold", "pearlPink"], 16, 0.12, 140);
+    SoundFX.success();
+    this.startMission();
   }
 
   showOnboardingHint() {
@@ -876,6 +959,7 @@ class GameScene extends Phaser.Scene {
 
     this.updateHud();
     this.expireCombo();
+    this.updateMission();
     this.updatePowerUpState();
     this.updateKeyboardDiveInput();
     this.updateDiveState();
@@ -2662,6 +2746,7 @@ class GameScene extends Phaser.Scene {
   }
 
   stompObstacle(obstacle) {
+    this.stompCount += 1;
     this.recordChallengeOutcome(obstacle, "cleared");
     this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 54;
@@ -2733,6 +2818,7 @@ class GameScene extends Phaser.Scene {
     }
 
     obstacle.setData("passed", true);
+    this.diveCount += 1;
     this.recordChallengeOutcome(obstacle, "cleared");
     this.prepareObstacleForRemoval(obstacle);
     const isPerfect = Math.abs(this.duck.x - obstacle.x) < 64;
